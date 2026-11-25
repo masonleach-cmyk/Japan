@@ -1,0 +1,16 @@
+{
+  "name": "Tabiji · Japan Route Atlas",
+  "short_name": "Tabiji",
+  "description": "An illustrated travel guide to Japan with routes for Nov 1-14.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F2E7CF",
+  "theme_color": "#F2E7CF",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
