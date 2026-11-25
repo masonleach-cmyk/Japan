@@ -1187,14 +1187,50 @@ let budget=0,more=false;
 function hn(i,j){let h=(i*374761393+j*668265263)^0x5bd1e995;h=Math.imul(h^(h>>>13),1274126177);return((h^(h>>>16))>>>0)/4294967296}
 function vnoise(x,y){const i=Math.floor(x),j=Math.floor(y),fx=x-i,fy=y-j,u=fx*fx*(3-2*fx),v=fy*fy*(3-2*fy);const a=hn(i,j),b=hn(i+1,j),c=hn(i,j+1),d=hn(i+1,j+1);return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v}
 /* ================= camera ================= */
-const cam={x:620,y:1050,s:.3,rot:0,tilt:.1};
-const TILT_MAX=1.0,S_MIN=.18;let S_MAX=60;
+const cam={x:620,y:1050,s:.3,rot:0,tilt:.1,zm:0};
+const S_MIN=.18;let S_MAX=60,TILT_MAX=1.0;
 let Mx={a:1,b:0,c:0,d:1,e:0,f:0};
+/* Settings → Camera. "tilt": the flat (orthographic) map, tipped up to 80°. "3d": a real perspective camera (needs WebGL2). */
+const P3ON=()=>GLON&&SET.view!=="tilt";
+function setView(){const p=P3ON();TILT_MAX=p?1.5:1.396;S_MAX=p?400:110;clampCam();WK="";OB.key="";labelsDue=true;invalidate()}
 function updM(c=cam,out=Mx){const co=Math.cos(c.rot),si=Math.sin(c.rot),k=Math.cos(c.tilt),s=c.s;
-  out.a=s*co;out.b=k*s*si;out.c=-s*si;out.d=k*s*co;out.e=W/2-(out.a*c.x+out.c*c.y);out.f=H/2-(out.b*c.x+out.d*c.y);return out}
-const toS=(m,x,y)=>[m.a*x+m.c*y+m.e,m.b*x+m.d*y+m.f];
-function toW(m,px,py){const det=m.a*m.d-m.b*m.c,X=px-m.e,Y=py-m.f;return[(m.d*X-m.c*Y)/det,(-m.b*X+m.a*Y)/det]}
-function clampCam(){cam.s=clamp(cam.s,S_MIN,S_MAX);cam.tilt=clamp(cam.tilt,0,TILT_MAX);cam.x=clamp(cam.x,-200,1550);cam.y=clamp(cam.y,0,1750)}
+  out.a=s*co;out.b=k*s*si;out.c=-s*si;out.d=k*s*co;out.e=W/2-(out.a*c.x+out.c*c.y);out.f=H/2-(out.b*c.x+out.d*c.y);if(P3ON())p3cam(c,out);else out.P3=false;out._fr=null;return out}
+const toS=(m,x,y)=>m.P3?p3s(m,x,y,m.Zt):[m.a*x+m.c*y+m.e,m.b*x+m.d*y+m.f];
+function toW(m,px,py){if(m.P3){const d=p3dir(m,px,py);const t=Math.min(d[2]<-1e-6?(m.Zt-m.ez)/d[2]:1e9,m.D*25);return[m.ex+t*d[0],m.ey+t*d[1]]}
+  const det=m.a*m.d-m.b*m.c,X=px-m.e,Y=py-m.f;return[(m.d*X-m.c*Y)/det,(-m.b*X+m.a*Y)/det]}
+/* ---- the perspective camera ----
+   It looks at the target (cam.x, cam.y, resting on the ground) from a distance F/s, so the target keeps exactly the scale
+   the flat map gives it. The eye sits back toward the bottom of the screen, tipped over by the tilt. World units:
+   x, y as the map (0.01° of latitude), z = metres × terrain multiplier / M_PER_U. */
+const FOC=()=>1.2*H;
+/* the target rests at cam.zm metres (the camera pivots about it). While a finger is down it stays put, so the ground
+   under the finger can be held exactly; once you let go it glides to the ground under the target, so the camera rides
+   up over hills and down into valleys. */
+function gTarget(x,y){const g=gh(x,y),r=1.5;return Math.max(g,(g+gh(x-r,y)+gh(x+r,y)+gh(x,y-r)+gh(x,y+r))/5)}
+function zGlide(dt){if(!GQ8)return false;const want=gTarget(cam.x,cam.y),d=want-(cam.zm||0),zs=EX()/M_PER_U;
+  if(!zs||Math.abs(d)*zs<FOC()/cam.s*2e-4){cam.zm=want;return false}cam.zm=(cam.zm||0)+d*(1-Math.exp(-dt/110));clampCam();return true}
+function p3cam(c,o){const zs=EX()/M_PER_U,F=FOC(),D=F/c.s,Zt=(c.zm??cam.zm??0)*zs,st=Math.sin(c.tilt),ct=Math.cos(c.tilt),si=Math.sin(c.rot),co=Math.cos(c.rot);
+  o.P3=true;o.F=F;o.D=D;o.Zt=Zt;o.zs=zs;o.ex=c.x+D*st*si;o.ey=c.y+D*st*co;o.ez=Zt+D*ct;
+  o.rx=co;o.ry=-si;o.ux=-ct*si;o.uy=-ct*co;o.uz=st;o.fx=-st*si;o.fy=-st*co;o.fz=-ct;
+  o.nr=Math.max(.01,D*.04);o.far=Math.max(D*90,3000);o.fe=Math.max(D*12,250);o.fs=o.fe*.08;o._fr=null;return o}
+let PZ=0;   /* view depth of the last point p3s projected */
+function p3s(m,x,y,z){const vx=x-m.ex,vy=y-m.ey,vz=z-m.ez,w=vx*m.fx+vy*m.fy+vz*m.fz;PZ=w;if(w<m.nr)return[-1e5,-1e5];const k=m.F/w;return[W/2+k*(vx*m.rx+vy*m.ry),H/2-k*(vx*m.ux+vy*m.uy+vz*m.uz)]}
+/* direction of the ray through a screen point (scaled so its depth component is 1) */
+function p3dir(m,px,py){const a=(px-W/2)/m.F,b=(py-H/2)/m.F;return[m.fx+a*m.rx-b*m.ux,m.fy+a*m.ry-b*m.uy,m.fz-b*m.uz]}
+/* the ground point under a screen point: march the ray over the terrain, then refine */
+function pick3(m,px,py){const d=p3dir(m,px,py),zs=m.zs,tmax=Math.min(m.far,m.D*40);let t=m.nr;
+  if(zs&&GQ8){const below=t=>m.ez+t*d[2]<=gh(m.ex+t*d[0],m.ey+t*d[1])*zs;let prev=t;
+    while(t<tmax){if(below(t)){let a=prev,b=t;for(let k=0;k<12;k++){const h=(a+b)/2;if(below(h))b=h;else a=h}return[m.ex+b*d[0],m.ey+b*d[1],m.ez+b*d[2]]}prev=t;t+=Math.max(.02,t*.015)}}
+  if(d[2]<-1e-6){t=Math.min(-m.ez/d[2],tmax);return[m.ex+t*d[0],m.ey+t*d[1],Math.max(0,m.ez+t*d[2])]}
+  return null}
+/* move camera c sideways so the world point G lands under the screen point (px, py) */
+function placeCam(c,G,px,py){for(let k=0;k<3;k++){const m=p3cam(c,{}),d=p3dir(m,px,py);if(Math.abs(d[2])<1e-5)return;const t=(G[2]-m.ez)/d[2];if(!(t>0))return;
+  let dx=G[0]-(m.ex+t*d[0]),dy=G[1]-(m.ey+t*d[1]);const L=Math.hypot(dx,dy),cap=m.D*3;if(L>cap){dx*=cap/L;dy*=cap/L}c.x+=dx;c.y+=dy}}
+const TMPC={};
+function clampCam(){cam.s=clamp(cam.s,S_MIN,S_MAX);cam.tilt=clamp(cam.tilt,0,TILT_MAX);cam.x=clamp(cam.x,-200,1550);cam.y=clamp(cam.y,0,1750);
+  /* 3D: never let the eye sink into a hillside; tip the camera up until it clears the ground */
+  if(P3ON()&&GQ8&&EX()){const ok=t=>{const m=p3cam({x:cam.x,y:cam.y,s:cam.s,rot:cam.rot,tilt:t},TMPC);return m.ez>=gh(m.ex,m.ey)*m.zs+Math.max(.03,m.D*.02)};
+    if(!ok(cam.tilt)){let a=0,b=cam.tilt;for(let k=0;k<8;k++){const h=(a+b)/2;if(ok(h))a=h;else b=h}cam.tilt=a}}}
 let sheetH=300;
 function insets(){const t=hb();
   if(desk()){const ar=app.getBoundingClientRect();return{t,b:0,l:LM()&&snap==="dock"?0:sheet.getBoundingClientRect().right-ar.left,r:0}}return{t,b:sheetH+(LM()&&snap==="dock"?DOCK_GAP:0),l:0,r:0}}
@@ -1214,12 +1250,12 @@ function focusCam(p){const c=CITY[p],I=insets(),vis=Math.min(W-I.l-I.r,H-I.t-I.b
   return camAt(P(...(c&&c.fc?c.fc:PL[p].ll)),clamp(vis*.5/half,3,S_MAX),{tilt:.3})}
 let camAnim=null;
 const ease=p=>p<.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2;
-function camTo(t,dur=900){stopInertia();zin=null;wacc=0;if(reduce){Object.assign(cam,t);clampCam();invalidate();return}
+function camTo(t,dur=900){stopInertia();zin=null;wacc=0;if(t.zm===undefined)t.zm=P3ON()&&GQ8?gh(t.x,t.y):cam.zm||0;if(reduce){Object.assign(cam,t);clampCam();invalidate();return}
   const f={...cam};let dr=t.rot-f.rot;while(dr>Math.PI)dr-=2*Math.PI;while(dr<-Math.PI)dr+=2*Math.PI;
   const dist=Math.hypot(t.x-f.x,t.y-f.y),smin=Math.min(f.s,t.s),V=Math.min(W,H),dip=dist*smin>V*.8?Math.log(V*.8/dist):null;
   camAnim={t0:performance.now(),dur,f,t,dr,dip};nudge()}
 function stepCam(now){if(!camAnim)return false;const{t0,dur,f,t,dr,dip}=camAnim;const p=Math.min(1,(now-t0)/dur),e=ease(p);
-  cam.rot=f.rot+dr*e;cam.tilt=f.tilt+(t.tilt-f.tilt)*e;
+  cam.rot=f.rot+dr*e;cam.tilt=f.tilt+(t.tilt-f.tilt)*e;cam.zm=(f.zm||0)+((t.zm||0)-(f.zm||0))*e;
   const a=Math.log(f.s),b=Math.log(t.s);cam.s=Math.exp(dip!==null&&dip<Math.min(a,b)?(1-e)*(1-e)*a+2*e*(1-e)*dip+e*e*b:a+(b-a)*e);
   const k=Math.abs(b-a)>1.2?Math.pow(e,.35):e;cam.x=f.x+(t.x-f.x)*k;cam.y=f.y+(t.y-f.y)*k;
   clampCam();if(p>=1)camAnim=null;return true}
@@ -1228,7 +1264,8 @@ function stepCam(now){if(!camAnim)return false;const{t0,dur,f,t,dr,dip}=camAnim;
 const ptrs=new Map();let g=null,moved=0,inert=null,lastTap={t:0,x:0,y:0},vel={x:0,y:0,t:0};
 function loc(e){const r=cv.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}
 function stopInertia(){inert=null}
-function anchor(px,py,fn){const m1=updM(cam,{}),a=toW(m1,px,py);fn();clampCam();const m2=updM(cam,{}),b=toW(m2,px,py);cam.x+=a[0]-b[0];cam.y+=a[1]-b[1];clampCam()}
+function anchor(px,py,fn){if(P3ON()){const G=pick3(updM(cam,{}),px,py);fn();clampCam();if(G)placeCam(cam,G,px,py);clampCam();return}
+  const m1=updM(cam,{}),a=toW(m1,px,py);fn();clampCam();const m2=updM(cam,{}),b=toW(m2,px,py);cam.x+=a[0]-b[0];cam.y+=a[1]-b[1];clampCam()}
 function two(){const[a,b]=[...ptrs.values()];return{cx:(a.x+b.x)/2,cy:(a.y+b.y)/2,d:Math.hypot(a.x-b.x,a.y-b.y)||1,ang:Math.atan2(b.y-a.y,b.x-a.x),a,b}}
 cv.addEventListener("pointerdown",e=>{if(e.pointerType==="mouse"&&e.button!==0&&e.button!==2)return;camAnim=null;stopInertia();zin=null;wacc=0;hideHint();
   const[x,y]=loc(e);ptrs.set(e.pointerId,{x,y,sx:x,sy:y});
@@ -1238,23 +1275,26 @@ cv.addEventListener("contextmenu",e=>e.preventDefault());
 addEventListener("pointermove",e=>{const p=ptrs.get(e.pointerId);if(!p||!g)return;const[x,y]=loc(e),dx=x-p.x,dy=y-p.y;p.x=x;p.y=y;
   if(ptrs.size===1){moved+=Math.abs(dx)+Math.abs(dy);if(moved<5)return;
     if(g.mode==="orbit"){cam.rot+=dx*.006;cam.tilt=clamp(cam.tilt-dy*.005,0,TILT_MAX);nudge();return}
-    const m=updM(cam,{}),a=toW(m,x-dx,y-dy),b=toW(m,x,y);cam.x+=a[0]-b[0];cam.y+=a[1]-b[1];clampCam();
-    const t=performance.now(),dt=Math.max(8,t-vel.t);vel={x:.6*((a[0]-b[0])/dt)+.4*vel.x,y:.6*((a[1]-b[1])/dt)+.4*vel.y,t};nudge()}
+    const ox=cam.x,oy=cam.y;
+    /* 3D: the ground first touched stays under the finger for the whole drag */
+    if(P3ON()){if(g.G===undefined)g.G=pick3(updM(cam,{}),x-dx,y-dy);if(g.G)placeCam(cam,g.G,x,y)}else{const m=updM(cam,{}),a=toW(m,x-dx,y-dy),b=toW(m,x,y);cam.x+=a[0]-b[0];cam.y+=a[1]-b[1]}clampCam();
+    const t=performance.now(),dt=Math.max(8,t-vel.t);vel={x:.6*((cam.x-ox)/dt)+.4*vel.x,y:.6*((cam.y-oy)/dt)+.4*vel.y,t};nudge()}
   else if(g.mode==="two"){const t=two(),L=g.last;g.last=t;const ratio=t.d/L.d;let da=t.ang-L.ang;if(da>Math.PI)da-=2*Math.PI;if(da<-Math.PI)da+=2*Math.PI;const ddy=t.cy-L.cy;
     /* two fingers side by side sliding up or down together = tilt; judged on net movement so finger jitter doesn't turn it into a pinch */
     if(!g.dec){const S=g.s0,ndy=t.cy-S.cy,nd=Math.abs(t.d-S.d);let na=t.ang-S.ang;if(na>Math.PI)na-=2*Math.PI;if(na<-Math.PI)na+=2*Math.PI;na=Math.abs(na)*t.d/2;
       const both=Math.sign(t.a.y-t.a.sy)===Math.sign(t.b.y-t.b.sy)&&Math.abs(t.a.y-t.a.sy)>5&&Math.abs(t.b.y-t.b.sy)>5,side=Math.abs(Math.cos(t.ang))>.5;
       if(Math.abs(ndy)>10&&both&&side&&Math.abs(ndy)>1.6*Math.max(nd,na))g.dec="tilt";else if(nd>14||na>14||Math.abs(ndy)>36)g.dec="pinch";else return}
     if(g.dec==="tilt"){cam.tilt=clamp(cam.tilt-ddy*.006,0,TILT_MAX);nudge();return}
-    anchor(t.cx,t.cy,()=>{cam.s*=ratio;cam.rot+=da});
+    if(P3ON()){const G=pick3(updM(cam,{}),L.cx,L.cy);cam.s*=ratio;cam.rot+=da;clampCam();if(G)placeCam(cam,G,t.cx,t.cy);clampCam()}else anchor(t.cx,t.cy,()=>{cam.s*=ratio;cam.rot+=da});
     {const tn=performance.now(),dtp=Math.max(8,tn-(g.vt||tn-16));g.vs=.6*(Math.log(ratio)/dtp)+.4*(g.vs||0);g.vt=tn;g.vc=[t.cx,t.cy]}
-    const m=updM(cam,{}),a=toW(m,L.cx,L.cy),b=toW(m,t.cx,t.cy);cam.x+=a[0]-b[0];cam.y+=a[1]-b[1];clampCam();nudge()}},{passive:true});
+    if(!P3ON()){const m=updM(cam,{}),a=toW(m,L.cx,L.cy),b=toW(m,t.cx,t.cy);cam.x+=a[0]-b[0];cam.y+=a[1]-b[1];clampCam()}nudge()}},{passive:true});
 function endPtr(e){if(!ptrs.has(e.pointerId))return;const p=ptrs.get(e.pointerId);ptrs.delete(e.pointerId);
   if(ptrs.size===1){if(LM()&&!reduce&&g&&g.mode==="two"&&g.dec==="pinch"&&g.vt&&performance.now()-g.vt<70&&Math.abs(g.vs||0)>.0003){zin={v:clamp(g.vs,-.006,.006),x:g.vc[0],y:g.vc[1]};nudge()}
-    g={mode:"pan"};vel={x:0,y:0,t:performance.now()};return}if(ptrs.size)return;const wasPan=g&&g.mode==="pan";g=null;
+    g={mode:"pan"};vel={x:0,y:0,t:performance.now()};return}if(ptrs.size)return;const wasPan=g&&g.mode==="pan";g=null;nudge();
   if(moved>=5){if(wasPan&&!reduce&&performance.now()-vel.t<70&&Math.hypot(vel.x,vel.y)*cam.s>.25){inert={vx:vel.x,vy:vel.y};nudge()}return}
   const now=performance.now();
-  if(now-lastTap.t<300&&Math.hypot(p.x-lastTap.x,p.y-lastTap.y)<30){const m=updM(cam,{}),wp=toW(m,p.x,p.y),c={...cam,s:clamp(cam.s*2.2,S_MIN,S_MAX)},m2=updM(c,{}),b=toW(m2,p.x,p.y);c.x+=wp[0]-b[0];c.y+=wp[1]-b[1];camTo(c,380);lastTap.t=0;return}
+  if(now-lastTap.t<300&&Math.hypot(p.x-lastTap.x,p.y-lastTap.y)<30){const c={...cam,s:clamp(cam.s*2.2,S_MIN,S_MAX)};
+    if(P3ON()){const G=pick3(updM(cam,{}),p.x,p.y);if(G)placeCam(c,G,p.x,p.y)}else{const m=updM(cam,{}),wp=toW(m,p.x,p.y),m2=updM(c,{}),b=toW(m2,p.x,p.y);c.x+=wp[0]-b[0];c.y+=wp[1]-b[1]}camTo(c,380);lastTap.t=0;return}
   lastTap={t:now,x:p.x,y:p.y};tapAt(p.x,p.y)}
 addEventListener("pointerup",endPtr);addEventListener("pointercancel",endPtr);
 cv.addEventListener("wheel",e=>{e.preventDefault();wheelT=performance.now();camAnim=null;stopInertia();hideHint();const[x,y]=loc(e);
@@ -1265,7 +1305,7 @@ document.addEventListener("gesturestart",e=>e.preventDefault());
 document.addEventListener("dblclick",e=>e.preventDefault());
 $("#compass").onclick=()=>camTo({...cam,rot:0,tilt:Math.min(cam.tilt,.3)},600);
 /* 3D button: tip the map over to see the terrain, or lay it flat again */
-$("#tiltb").onclick=()=>camTo({...cam,tilt:cam.tilt>.45?0:.95},700);
+$("#tiltb").onclick=()=>camTo({...cam,tilt:cam.tilt>.45?0:P3ON()?1.2:.95},700);
 
 /* ================= render on demand ================= */
 let wheelT=0,queued=false,last=0,wantFull=true;
@@ -1274,17 +1314,18 @@ function nudge(){if(!queued){queued=true;requestAnimationFrame(frame)}}
 function frame(now){queued=false;const dt=Math.min(50,now-(last||now));last=now;
   const anim=stepCam(now);
   if(inert){const f=Math.pow(.9,dt/16);inert.vx*=f;inert.vy*=f;cam.x+=inert.vx*dt;cam.y+=inert.vy*dt;clampCam();if(Math.hypot(inert.vx,inert.vy)*cam.s<.03)inert=null}
-  zoomStep(dt);frameM(now,dt)}
+  zoomStep(dt);if(P3ON()&&!g&&!camAnim&&!zin&&!wacc&&zGlide(dt))nudge();frameM(now,dt)}
 /* ---- City Lights frame: three layers, each redrawn only when needed ----
    map (#cv): when the camera moves or a tile arrives.  trains (#tc): every tick.  labels (#lc): when the camera moves or a label is fading. */
-let WK="",worldFade=false,labelsDue=true;
+let WK="",worldFade=false,labelsDue=true,FASTNOW=false;
 function frameM(now,dt){
-  const key=cam.x+","+cam.y+","+cam.s+","+cam.rot+","+cam.tilt+","+W+","+H,camCh=key!==WK;
-  const fast=!!(camAnim||inert||g||zin||wacc||now-wheelT<120);
+  const key=cam.x+","+cam.y+","+cam.s+","+cam.rot+","+cam.tilt+","+cam.zm+","+W+","+H,camCh=key!==WK;
+  const fast=!!(camAnim||inert||g||zin||wacc||now-wheelT<120);FASTNOW=fast;
   if(camCh||wantFull||worldFade){WK=key;wantFull=false;ctx=CTX0;worldFade=drawWorldM(now,fast);labelsDue=true}
   ctx=tctx;ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,tcv.width,tcv.height);if(SET.trains)drawTrains(now);
   if(labelsDue||LANIM){labelsDue=false;ctx=lctx;drawLabelsM(Math.min(64,dt||16))}
   ctx=CTX0;
+  if(OB.dirty){wantFull=true;nudge()}
   if(camAnim||inert||zin||wacc||worldFade||LANIM||more)nudge();
   /* trains run on every display frame while they are on screen */
   if(SET.trains&&!document.hidden)nudge()}
@@ -1484,7 +1525,7 @@ const POPS=[[139.75,35.69,9700],[139.40,35.68,4200],[139.62,35.47,3770],[139.70,
 
 /* ================= LIGHTS: the modern dot map =================
    Land is a grid of dots; people are lights; every train is a moving dot. */
-const SET={mode:"lights",pal:"sodium",bright:1,glow:true,trains:true,lines:true,terrain:true,relief:10};
+const SET={mode:"lights",pal:"sodium",bright:1,glow:true,trains:true,lines:true,terrain:true,relief:10,view:"3d"};
 try{Object.assign(SET,JSON.parse(localStorage.getItem("tabiji-set")||"{}"))}catch(e){}
 SET.mode="lights";   /* the Ukiyo-e map has been retired; City Lights is the only map */
 function saveSet(){try{localStorage.setItem("tabiji-set",JSON.stringify(SET))}catch(e){}}
@@ -1803,11 +1844,71 @@ float cov(float d){float fw=max(fwidth(d),1e-3);return clamp((.5-d)/fw+.5,0.,1.)
 void main(){vec2 w=uW0+uWM*(vec2(gl_FragCoord.x,uH-gl_FragCoord.y)/uDpr);float c=0.,g=1./uS;
  float X=clamp(floor(w.x/80.9+.5),-1.,17.)*80.9;if(w.y>-g&&w.y<1600.+g)c=max(c,cov(dash((1600.-w.y)*uS,(w.x-X)*uS)));
  float Y=clamp(floor(w.y/100.+.5),0.,16.)*100.;if(w.x>-161.8-g&&w.x<1456.2+g)c=max(c,cov(dash((w.x+161.8)*uS,(w.y-Y)*uS)));
- float a=c*uA;if(a<=0.)discard;o=vec4(vec3(.0863,.1373,.2275)*a,a);}`};
+ float a=c*uA;if(a<=0.)discard;o=vec4(vec3(.0863,.1373,.2275)*a,a);}`,
+ /* ---- 3D camera versions ----
+    dots: each dot stands at its own height and is drawn as a round light facing the camera, sized by its distance.
+    Depth is tested against the ground (below) so hills hide what is behind them; it is nudged toward the eye a touch
+    so a dot never hides under the ground it sits on. Far away everything fades into the haze. */
+ dotV3:`#version 300 es
+layout(location=0) in vec2 aQ;layout(location=1) in vec2 aP;layout(location=2) in float aH;layout(location=3) in float aR;layout(location=4) in float aC;
+uniform mat4 uVP;uniform vec3 uO;uniform float uZs,uDpr,uF,uNear,uBias,uZa,uZb,uJit;uniform vec2 uRes;uniform vec4 uClip;uniform vec3 uFog;
+out vec2 vL;flat out int vC;out float vA;
+void main(){vec2 p=aP*(1./128.);vC=int(aC+.5);
+ if(p.x<uClip.x||p.y<uClip.y||p.x>=uClip.z||p.y>=uClip.w){vL=vec2(0.);vA=0.;gl_Position=vec4(-2.,-2.,0.,1.);return;}
+ /* seen edge-on, a perfectly regular grid of dots beats into moiré stripes, so tipped views shake each dot a little */
+ if(uJit>0.)p+=(vec2(fract(sin(dot(aP,vec2(12.9898,78.233)))*43758.55),fract(sin(dot(aP,vec2(39.346,11.135)))*24634.63))-.5)*uJit;
+ vec4 c=uVP*vec4(uO.xy+p*uO.z,aH*uZs,1.);
+ if(c.w<uNear){vL=vec2(0.);vA=0.;gl_Position=vec4(-2.,-2.,0.,1.);return;}
+ float r=aR*(1./32.),rp=min(r*uO.z*uF/c.w,r*2.2),e=1.+.75/max(rp*uDpr,.3);vL=aQ*e;
+ vA=1.-smoothstep(uFog.x,uFog.y,c.w)*.92;
+ c.xy+=aQ*e*rp*2./uRes*c.w;
+ float vb=max(uNear,c.w*(1.-uBias));c.z=(uZa*vb+uZb)/vb*c.w;gl_Position=c;}`,
+ dotF3:`#version 300 es
+precision highp float;in vec2 vL;flat in int vC;in float vA;uniform vec3 uPal[19];uniform float uA;out vec4 o;
+void main(){float d=length(vL),fw=max(fwidth(d),1e-4),c=clamp((1.-d)/fw+.5,0.,1.);if(c<=0.)discard;float a=c*uA*vA;o=vec4(uPal[vC]*a,a);}`,
+ glowF3:`#version 300 es
+precision highp float;in vec2 vL;flat in int vC;in float vA;uniform float uA;
+layout(location=0) out vec4 o0;layout(location=1) out vec4 o1;layout(location=2) out vec4 o2;
+void main(){float d=length(vL),fw=max(fwidth(d),1e-4),c=clamp((1.-d)/fw+.5,0.,1.);if(c<=0.)discard;float v=c*uA*vA;ivec4 k=ivec4(vC-4);
+ o0=vec4(equal(k,ivec4(0,1,2,3)))*v;o1=vec4(equal(k,ivec4(4,5,6,7)))*v;o2=vec4(equal(k,ivec4(8,9,10,11)))*v;}`,
+ /* the ground itself: an invisible-but-solid surface built from the elevation grid (each vertex takes the lowest
+    ground around it, so it never pokes up through the dots). It only adds haze with distance and, once the view is
+    tipped well over, a faint light on slopes facing north-west. */
+ terV:`#version 300 es
+layout(location=0) in vec3 aG;
+uniform highp sampler2D uHt;uniform mat4 uVP;uniform ivec2 uC;uniform int uL;uniform float uZs,uHM;uniform vec4 uGeo;
+out float vW;out float vSh;
+float hAt(ivec2 q,ivec2 sz){if(q.x<0||q.y<0||q.x>=sz.x||q.y>=sz.y)return 0.;float v=texelFetch(uHt,q,uL).r;return v*v*uHM;}
+void main(){ivec2 sz=textureSize(uHt,uL);ivec2 q=uC+ivec2(aG.xy);float h=hAt(q,sz),st=float(1<<uL);
+ vec3 p=vec3(uGeo.x+float(q.x)*st*uGeo.y,uGeo.z+float(q.y)*st*uGeo.w,aG.z>.5?0.:h*uZs);
+ float hx=(hAt(q+ivec2(1,0),sz)-hAt(q-ivec2(1,0),sz))*uZs/(2.*st*uGeo.y),hy=(hAt(q+ivec2(0,1),sz)-hAt(q-ivec2(0,1),sz))*uZs/(2.*st*uGeo.w);
+ vSh=max(0.,dot(normalize(vec3(-hx,-hy,1.)),normalize(vec3(-.55,-.6,.58)))-.58)*2.4;
+ vec4 c=uVP*vec4(p,1.);vW=c.w;gl_Position=c;}`,
+ terF:`#version 300 es
+precision highp float;in float vW;in float vSh;uniform vec3 uHz,uFog;uniform float uSA;out vec4 o;
+void main(){float f=smoothstep(uFog.x,uFog.y,vW)*uFog.z,s=min(1.,vSh)*uSA*(1.-f);o=vec4(uHz*f+vec3(.21,.28,.40)*s,f+s);}`,
+ /* sky and open sea: a full-screen pass behind everything (depth 1), so the land hides it */
+ skyV:`#version 300 es
+void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));gl_Position=vec4(p*2.-1.,1.,1.);}`,
+ skyF:`#version 300 es
+precision highp float;uniform vec3 uE,uR,uU,uFw,uHz,uFog;uniform float uF,uDpr,uH,uW,uHc;out vec4 o;
+void main(){vec2 q=vec2(gl_FragCoord.x,uH-gl_FragCoord.y)/uDpr;vec3 d=uFw+(q.x-uW*.5)/uF*uR-(q.y-uHc*.5)/uF*uU;float a;
+ if(d.z<-1e-6){float t=uE.z/(-d.z);a=smoothstep(uFog.x,uFog.y,t)*uFog.z;}
+ else{float e=d.z/length(d);a=uFog.z*(1.-smoothstep(0.,.22,e));}
+ if(a<=.002)discard;o=vec4(uHz*a,a);}`,
+ gratF3:`#version 300 es
+precision highp float;uniform vec3 uE,uR,uU,uFw,uFog;uniform float uF,uDpr,uH,uW,uHc,uA;out vec4 o;
+float dash(float u,float v){float m=mod(u,6.);if(m>3.5)m-=6.;return length(vec2(max(0.,max(-m,m-1.)),v));}
+float cov(float d){float fw=max(fwidth(d),1e-3);return clamp((.5-d)/fw+.5,0.,1.);}
+void main(){vec2 q=vec2(gl_FragCoord.x,uH-gl_FragCoord.y)/uDpr;vec3 d=uFw+(q.x-uW*.5)/uF*uR-(q.y-uHc*.5)/uF*uU;if(d.z>-1e-6)discard;
+ float t=uE.z/(-d.z);vec2 w=uE.xy+t*d.xy;float uS=uF/t,c=0.,g=1./uS;
+ float X=clamp(floor(w.x/80.9+.5),-1.,17.)*80.9;if(w.y>-g&&w.y<1600.+g)c=max(c,cov(dash((1600.-w.y)*uS,(w.x-X)*uS)));
+ float Y=clamp(floor(w.y/100.+.5),0.,16.)*100.;if(w.x>-161.8-g&&w.x<1456.2+g)c=max(c,cov(dash((w.x+161.8)*uS,(w.y-Y)*uS)));
+ float a=c*uA*(1.-smoothstep(uFog.x,uFog.y,t));if(a<=0.)discard;o=vec4(vec3(.0863,.1373,.2275)*a,a);}`};
 const GL={gl:null,lost:false,
  init(){if(this.gl)return!this.lost;
   try{if(typeof WebGL2RenderingContext==="undefined"||typeof DecompressionStream==="undefined")return false;
-    const gl=GLC.getContext("webgl2",{alpha:true,premultipliedAlpha:true,antialias:false,depth:false,stencil:false,preserveDrawingBuffer:false,powerPreference:"high-performance"});if(!gl)return false;this.gl=gl;
+    const gl=GLC.getContext("webgl2",{alpha:true,premultipliedAlpha:true,antialias:false,depth:true,stencil:false,preserveDrawingBuffer:false,powerPreference:"high-performance"});if(!gl)return false;this.gl=gl;
     GLC.addEventListener("webglcontextlost",e=>{e.preventDefault();this.lost=true});
     GLC.addEventListener("webglcontextrestored",()=>{try{this.setup();this.lost=false}catch(e){glOff();return}
       STALE.clear();TL.clear();tlPx=0;BASE_OK=false;prevZ=-1;TW.ep++;TW.pend.clear();invalidate()});
@@ -1817,6 +1918,16 @@ const GL={gl:null,lost:false,
   const pr=(v,f)=>{const p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHADER,v));gl.attachShader(p,sh(gl.FRAGMENT_SHADER,f));gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));
     const u={},n=gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);for(let i=0;i<n;i++){const a=gl.getActiveUniform(p,i);u[a.name.replace(/\[0\]$/,"")]=gl.getUniformLocation(p,a.name)}return{p,u}};
   this.pDot=pr(GLSL.dotV,GLSL.dotF);this.pGlow=pr(GLSL.dotV,GLSL.glowF);this.pComp=pr(GLSL.fullV,GLSL.compF);this.pGrat=pr(GLSL.fullV,GLSL.gratF);
+  this.pDot3=pr(GLSL.dotV3,GLSL.dotF3);this.pGlow3=pr(GLSL.dotV3,GLSL.glowF3);this.pTer=pr(GLSL.terV,GLSL.terF);this.pSky=pr(GLSL.skyV,GLSL.skyF);this.pGrat3=pr(GLSL.fullV,GLSL.gratF3);
+  /* one ground patch: 33×33 vertices plus a skirt hanging from its edge to hide cracks between detail levels */
+  {const N=32,v=[],ix=[];for(let j=0;j<=N;j++)for(let i=0;i<=N;i++)v.push(i,j,0);
+    for(let j=0;j<N;j++)for(let i=0;i<N;i++){const a=j*(N+1)+i;ix.push(a,a+1,a+N+1,a+1,a+N+2,a+N+1)}
+    const edge=[];for(let i=0;i<N;i++)edge.push([i,0,i+1,0]);for(let j=0;j<N;j++)edge.push([N,j,N,j+1]);for(let i=N;i>0;i--)edge.push([i,N,i-1,N]);for(let j=N;j>0;j--)edge.push([0,j,0,j-1]);
+    for(const[a0,b0,a1,b1]of edge){const t0=a0+b0*(N+1),t1=a1+b1*(N+1),k=v.length/3;v.push(a0,b0,1,a1,b1,1);ix.push(t0,t1,k,t1,k+1,k)}
+    this.tVao=gl.createVertexArray();gl.bindVertexArray(this.tVao);const vb=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vb);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(v),gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,0,0);const ib=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(ix),gl.STATIC_DRAW);
+    this.tN=ix.length;gl.bindVertexArray(null)}
+  this.ht=null;
   this.quad=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,this.quad);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
   this.vEmpty=gl.createVertexArray();this.fb=null;this.fw=this.fh=0;this.rk=null},
  upload(d){const gl=this.gl,buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,d.buf,gl.STATIC_DRAW);
@@ -1872,7 +1983,49 @@ const GL={gl:null,lost:false,
     gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,GLC.width,GLC.height);gl.scissor(sx0,sy0,sx1-sx0,sy1-sy0);gl.blendEquation(gl.FUNC_ADD);
     const C=this.pComp;gl.useProgram(C.p);this.tx.forEach((t,i)=>{gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,t)});gl.uniform1i(C.u.t0,0);gl.uniform1i(C.u.t1,1);gl.uniform1i(C.u.t2,2);gl.uniform3fv(C.u.uG,this.G);
     gl.uniform2f(C.u.uInv,1/GLC.width,1/GLC.height);gl.bindVertexArray(this.vEmpty);gl.drawArrays(gl.TRIANGLES,0,3);gl.disable(gl.SCISSOR_TEST);use(this.pDot)}
-  pass(this.pDot,2);gl.bindVertexArray(null)}};
+  pass(this.pDot,2);gl.bindVertexArray(null)},
+ /* the ground's height texture: level L holds the lowest ground around each point of the 2^L-coarser grid */
+ mkHt(){if(this.ht)return true;if(!VMIP&&!mkVMIP())return false;const gl=this.gl,t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);
+  gl.texStorage2D(gl.TEXTURE_2D,8,gl.R8,ELEVM.W,ELEVM.H);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
+  for(let L=0;L<8;L++){const v=VMIP[L];gl.texSubImage2D(gl.TEXTURE_2D,L,0,0,v.w,v.h,gl.RED,gl.UNSIGNED_BYTE,v.d)}
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST_MIPMAP_NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);this.ht=t;return true},
+ /* 3D camera frame: ground (depth only, plus haze) → sky and open sea → graticule → dots tested against the ground */
+ draw3(list,m){const gl=this.gl;if(!gl||this.lost)return;
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,GLC.width,GLC.height);gl.clearColor(0,0,0,0);gl.depthMask(true);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+  gl.enable(gl.BLEND);gl.blendEquation(gl.FUNC_ADD);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);this.pal();
+  const VP=vpMat(m),HZ=[.10,.155,.255],FG=[m.fs,m.fe,.62],sa=.16*smooth01((cam.tilt-.5)/.7);
+  const cams=u=>{gl.uniform3f(u.uE,m.ex,m.ey,m.ez);gl.uniform3f(u.uR,m.rx,m.ry,0);gl.uniform3f(u.uU,m.ux,m.uy,m.uz);gl.uniform3f(u.uFw,m.fx,m.fy,m.fz);gl.uniform1f(u.uF,m.F);gl.uniform1f(u.uDpr,DPR);gl.uniform1f(u.uH,GLC.height);gl.uniform1f(u.uW,W);gl.uniform1f(u.uHc,H)};
+  gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LESS);
+  if(this.skip!=="ground"&&this.mkHt()){const P=this.pTer,u=P.u;gl.useProgram(P.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,this.ht);gl.uniform1i(u.uHt,0);
+    gl.uniform1f(u.uZs,m.zs);gl.uniform1f(u.uHM,ELEVM.HMAX);gl.uniform4f(u.uGeo,GEO.x0,GEO.dx,GEO.y0,GEO.dy);gl.uniform3f(u.uHz,HZ[0],HZ[1],HZ[2]);gl.uniform3f(u.uFog,FG[0],FG[1],FG[2]);gl.uniform1f(u.uSA,sa);
+    /* depth first, then colour for the nearest surface only (the haze must not pile up through hidden slopes) */
+    gl.bindVertexArray(this.tVao);const ch=chunks(m,32,14,7).sort((a,b)=>a[3]-b[3]);this.nch=ch.length;
+    const all=()=>{for(const[L,cx,cy]of ch){gl.uniform2i(u.uC,cx*32,cy*32);gl.uniform1i(u.uL,L);gl.drawElements(gl.TRIANGLES,this.tN,gl.UNSIGNED_SHORT,0)}};
+    gl.colorMask(false,false,false,false);all();gl.colorMask(true,true,true,true);gl.depthMask(false);gl.depthFunc(gl.LEQUAL);all()}
+  gl.depthMask(false);gl.depthFunc(gl.LEQUAL);
+  {const P=this.pSky,u=P.u;gl.useProgram(P.p);cams(u);gl.uniform3f(u.uHz,HZ[0],HZ[1],HZ[2]);gl.uniform3f(u.uFog,FG[0],FG[1],FG[2]);gl.bindVertexArray(this.vEmpty);gl.drawArrays(gl.TRIANGLES,0,3)}
+  gl.disable(gl.DEPTH_TEST);
+  if(GRA>0){const P=this.pGrat3,u=P.u;gl.useProgram(P.p);cams(u);gl.uniform3f(u.uFog,FG[0],FG[1],FG[2]);gl.uniform1f(u.uA,GRA);gl.bindVertexArray(this.vEmpty);gl.drawArrays(gl.TRIANGLES,0,3)}
+  if(!list.length||this.skip==="all"){gl.bindVertexArray(null);gl.depthMask(true);return}
+  /* far tiles first, so near dots paint over far ones */
+  for(const it of list){const t=it[3],cx=it[1]+t/2-m.ex,cy=it[2]+t/2-m.ey;it[6]=cx*cx+cy*cy}list.sort((a,b)=>b[6]-a[6]);
+  const near=m.nr,far=m.far,za=(far+near)/(far-near),zb=-2*far*near/(far-near);
+  const use=P=>{const u=P.u;gl.useProgram(P.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform2f(u.uRes,W,H);gl.uniform1f(u.uDpr,DPR);gl.uniform1f(u.uZs,m.zs);gl.uniform1f(u.uF,m.F);gl.uniform1f(u.uNear,near);
+    gl.uniform1f(u.uBias,.006);gl.uniform1f(u.uJit,LT_SP*.8*smooth01((cam.tilt-.55)/.6));gl.uniform1f(u.uZa,za);gl.uniform1f(u.uZb,zb);gl.uniform3f(u.uFog,m.fs,m.fe,0);if(u.uPal)gl.uniform3fv(u.uPal,this.P)};
+  const pass=(P,r)=>{const u=P.u;for(const it of list){const b=it[0];if(!b.n[r])continue;const k=it[3]/(LT_N*LT_SP),cl=it[5];
+    gl.uniform3f(u.uO,it[1],it[2],k);gl.uniform1f(u.uA,it[4]);
+    if(cl)gl.uniform4f(u.uClip,cl[0],cl[1],cl[2],cl[3]);else gl.uniform4f(u.uClip,-1,-1,1e6,1e6);
+    gl.bindVertexArray(b.v[r]);gl.drawArraysInstanced(gl.TRIANGLE_STRIP,0,4,b.n[r])}};
+  gl.enable(gl.DEPTH_TEST);use(this.pDot3);if(this.skip!=="dots")pass(this.pDot3,0);
+  if(this.skip!=="glow"&&list.some(it=>it[0].n[1])){this.fbo();gl.disable(gl.DEPTH_TEST);
+    gl.bindFramebuffer(gl.FRAMEBUFFER,this.fb);gl.viewport(0,0,this.fw,this.fh);
+    gl.drawBuffers([gl.COLOR_ATTACHMENT0,gl.COLOR_ATTACHMENT1,gl.COLOR_ATTACHMENT2]);gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.blendEquation(gl.MAX);use(this.pGlow3);pass(this.pGlow3,1);
+    gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,GLC.width,GLC.height);gl.blendEquation(gl.FUNC_ADD);
+    const C=this.pComp;gl.useProgram(C.p);this.tx.forEach((t,i)=>{gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,t)});gl.uniform1i(C.u.t0,0);gl.uniform1i(C.u.t1,1);gl.uniform1i(C.u.t2,2);gl.uniform3fv(C.u.uG,this.G);
+    gl.uniform2f(C.u.uInv,1/GLC.width,1/GLC.height);gl.bindVertexArray(this.vEmpty);gl.drawArrays(gl.TRIANGLES,0,3);gl.activeTexture(gl.TEXTURE0);gl.enable(gl.DEPTH_TEST);use(this.pDot3)}
+  if(this.skip!=="dots")pass(this.pDot3,2);gl.disable(gl.DEPTH_TEST);gl.depthMask(true);gl.bindVertexArray(null)}};
 /* ---- tile workers: the dot map is generated off the main thread, so panning and zooming never stall ----
    TILE_WORKER runs inside each worker (it is turned into a string; it is never called on this page). */
 function TILE_WORKER(){
@@ -1956,7 +2109,7 @@ const tileCfg=()=>({ramp:RAMP,bright:SET.bright,glow:SET.glow,dpr:DPR,gl:GLON});
 function initTileWorkers(){if(TW.ok||TW.failed)return;
   try{if(typeof OffscreenCanvas==="undefined"||typeof Worker==="undefined"||typeof Path2D==="undefined")throw 0;
     const t=new OffscreenCanvas(2,2);if(!t.getContext("2d")||!t.transferToImageBitmap)throw 0;
-    GLON=GL.init();app.classList.toggle("gl3",GLON);if(GLON&&POPREAL)groundLoad();
+    GLON=GL.init();app.classList.toggle("gl3",GLON);if(GLON&&POPREAL)groundLoad();setView();
     const src=`"use strict";const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));const PD=${JSON.stringify(PD)};\n${hn}\n${vnoise}\n${segDist}\n${smoothClosed}\n${popV}\n${popBuild}\n${popAt}\n${popDecode}\n${landIndex}\n${elevDecode}\n${elevAt}\nconst popLvl=${popLvl};\n(${TILE_WORKER})();`;
     const url=URL.createObjectURL(new Blob([src],{type:"text/javascript"}));
     const d={land:LAND_R,lakes:LAKE_R,
@@ -2004,7 +2157,8 @@ function drawTilesM(vx0,vy0,vx1,vy1,now,fast,op=1,base=null){initTileWorkers();m
   const tileUp=(i,j,tw)=>{const x0=i*tw,y0=j*tw;let a=1e9,b=1e9,c=-1e9,d=-1e9;for(const[u,v]of[[x0,y0],[x0+tw,y0],[x0+tw,y0+tw],[x0,y0+tw]]){const q=toS(Mz,u,v);a=Math.min(a,q[0]);c=Math.max(c,q[0]);b=Math.min(b,q[1]);d=Math.max(d,q[1])}
     b-=regionMaxM(x0,y0,x0+tw,y0+tw)*lpm;return c>-20&&a<W+20&&d>-20&&b<H+20};
   const baseIdx=tw=>[Math.floor(base[0]/tw),Math.floor(base[2]/tw),Math.floor(base[1]/tw),Math.floor(base[3]/tw)];
-  const Lr=Math.log2(cam.s/.25),L=clamp(Lr,0,10),zf=Math.floor(L),fr=L-zf;
+  /* tipped past ~57° the ground is seen so edge-on that full detail would mostly overlap, so it steps down a level or so */
+  const Lr=Math.log2(cam.s*Math.min(1,Math.sqrt(Math.cos(cam.tilt)/.5403))/.25),L=clamp(Lr,0,10),zf=Math.floor(L),fr=L-zf;
   if(Math.abs(Lr-lastLS)>.002)zoomDir=Math.sign(Lr-lastLS);lastLS=Lr;
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="low";
   const cx=(vx0+vx1)/2,cy=(vy0+vy1)/2;let fading=false;TOP=op;
@@ -2035,6 +2189,92 @@ function drawTilesM(vx0,vy0,vx1,vy1,now,fast,op=1,base=null){initTileWorkers();m
   pump(fast);
   return fading||more}
 
+/* ---- 3D camera: ground grid, frustum, tile choice, and what the hills hide ---- */
+/* elevation grid geometry: native cell (gx, gy) → world */
+const GEO={x0:(ELEVM.LON0+.5*ELEVM.STEP-129)*COSL*SCALE,dx:ELEVM.STEP*COSL*SCALE,y0:(46-ELEVM.LAT0+.5*ELEVM.STEP)*SCALE,dy:ELEVM.STEP*SCALE};
+/* VMIP[L]: the lowest ground in each 2^L block and its neighbours, so a surface built on it always stays under the dots */
+let VMIP=null;
+function mkVMIP(){if(!GQ8)return false;const W0=ELEVM.W,H0=ELEVM.H,mn=[{w:W0,h:H0,d:GQ8}];
+  for(let L=1;L<=9;L++){const p=mn[L-1],w=Math.max(1,W0>>L),h=Math.max(1,H0>>L),d=new Uint8Array(w*h);
+    for(let y=0;y<h;y++){const Y0=Math.min(p.h-1,2*y)*p.w,Y1=Math.min(p.h-1,2*y+1)*p.w;for(let x=0;x<w;x++){const X0=Math.min(p.w-1,2*x),X1=Math.min(p.w-1,2*x+1);d[y*w+x]=Math.min(p.d[Y0+X0],p.d[Y0+X1],p.d[Y1+X0],p.d[Y1+X1])}}
+    mn.push({w,h,d})}
+  VMIP=mn.map(({w,h,d})=>{const a=new Uint8Array(w*h),b=new Uint8Array(w*h);
+    for(let y=0;y<h;y++){const r=y*w;for(let x=0;x<w;x++){let v=d[r+x];if(x>0&&d[r+x-1]<v)v=d[r+x-1];if(x<w-1&&d[r+x+1]<v)v=d[r+x+1];a[r+x]=v}}
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;let v=a[i];if(y>0&&a[i-w]<v)v=a[i-w];if(y<h-1&&a[i+w]<v)v=a[i+w];b[i]=v}
+    return{w,h,d:b}});return true}
+/* view-projection matrix (column-major); clip w = depth along the view */
+function vpMat(m){const sx=2*m.F/W,sy=2*m.F/H,n=m.nr,f=m.far,A=(f+n)/(f-n),B=-2*f*n/(f-n);
+  const er=m.rx*m.ex+m.ry*m.ey,eu=m.ux*m.ex+m.uy*m.ey+m.uz*m.ez,ef=m.fx*m.ex+m.fy*m.ey+m.fz*m.ez;
+  return new Float32Array([sx*m.rx,sy*m.ux,A*m.fx,m.fx, sx*m.ry,sy*m.uy,A*m.fy,m.fy, 0,sy*m.uz,A*m.fz,m.fz, -sx*er,-sy*eu,-A*ef+B,-ef])}
+/* the four side planes of the view (through the eye) plus the near plane */
+function frus(m){if(m._fr)return m._fr;const c=[[0,0],[W,0],[W,H],[0,H]].map(([x,y])=>p3dir(m,x,y)),p=[];
+  for(let i=0;i<4;i++){const a=c[i],b=c[(i+1)%4];let n=[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];if(n[0]*m.fx+n[1]*m.fy+n[2]*m.fz<0)n=n.map(v=>-v);p.push(n)}
+  p.push([m.fx,m.fy,m.fz]);return m._fr=p}
+function boxIn(m,x0,y0,z0,x1,y1,z1){const F=frus(m);for(let k=0;k<5;k++){const n=F[k],px=n[0]>0?x1:x0,py=n[1]>0?y1:y0,pz=n[2]>0?z1:z0;if(n[0]*(px-m.ex)+n[1]*(py-m.ey)+n[2]*(pz-m.ez)<(k===4?m.nr:0))return false}return true}
+function boxDist(m,x0,y0,z0,x1,y1,z1){return Math.hypot(Math.max(x0-m.ex,0,m.ex-x1),Math.max(y0-m.ey,0,m.ey-y1),Math.max(z0-m.ez,0,m.ez-z1))}
+/* ground patches to draw: N×N cells at level L, finer near the eye, each cell about tgt px on screen */
+const CHM=new Map();
+function chunks(m,N,tgt,L0){const out=[],zs=m.zs,cw=Math.max(GEO.dx,GEO.dy);
+  const visit=(L,cx,cy)=>{const sz=1<<L;if(cx*N>=Math.max(1,ELEVM.W>>L)||cy*N>=Math.max(1,ELEVM.H>>L))return;
+    const gx0=cx*N*sz,gy0=cy*N*sz,x0=GEO.x0+gx0*GEO.dx,x1=x0+N*sz*GEO.dx,y0=GEO.y0+gy0*GEO.dy,y1=y0+N*sz*GEO.dy;
+    const ck=(N*16+L)*1e8+cx*1e4+cy;let hr=CHM.get(ck);if(hr===undefined){hr=regionMaxM(x0,y0,x1,y1);CHM.set(ck,hr)}
+    const hm=hr*zs+.01;if(!boxIn(m,x0,y0,0,x1,y1,hm))return;
+    const d=Math.max(boxDist(m,x0,y0,0,x1,y1,hm),m.nr);if(d>m.far)return;
+    if(L>0&&cw*sz*m.F/d>tgt){for(let b=0;b<2;b++)for(let a=0;a<2;a++)visit(L-1,cx*2+a,cy*2+b);return}
+    out.push([L,cx,cy,d])};
+  for(let cy=0;cy*N<Math.max(1,ELEVM.H>>L0);cy++)for(let cx=0;cx*N<Math.max(1,ELEVM.W>>L0);cx++)visit(L0,cx,cy);
+  return out}
+/* dot tiles for the 3D camera: a quadtree, each tile at the detail that keeps its dots about 4 px apart on screen
+   (a little coarser where the ground is seen edge-on), near tiles first */
+const HMC=new Map();
+function tileHm(z,i,j,tw){const k=z+","+i+","+j;let v=HMC.get(k);if(v===undefined){v=regionMaxM(i*tw,j*tw,(i+1)*tw,(j+1)*tw);HMC.set(k,v)}return v}
+let P3N=0,Z3=-9;
+function drawTilesP(m,now,fast,op){initTileWorkers();more=false;GQ.length=0;TOP=op;let fading=false;const lv=[];
+  /* looking nearly straight down, every tile takes the detail of the screen centre (as the flat map does), so there is no
+     seam between detail levels; tipping the view over hands the choice to each tile's own distance */
+  const kd=smooth01((cam.tilt-.35)/.55);
+  /* the overall detail level only steps once you are well past the halfway point, so it doesn't flicker on the boundary */
+  const Lc=Math.log2(m.F/(m.D*.25));if(!(Math.abs(Lc-Z3)<=.56))Z3=Math.round(Lc);const sh=Z3-Lc;
+  const sel=b=>{lv.length=0;const visit=(z,i,j)=>{const tw=tileW(z),x0=i*tw,y0=j*tw,x1=x0+tw,y1=y0+tw,mg=tw*.02,hm=tileHm(z,i,j,tw)*m.zs+.01;
+      if(!boxIn(m,x0-mg,y0-mg,0,x1+mg,y1+mg,hm))return;const d=Math.max(boxDist(m,x0,y0,0,x1,y1,hm),m.nr);if(d>m.fe*1.05)return;
+      const dl=m.D+(d-m.D)*kd,g=kd?Math.sqrt(clamp((m.ez-hm*.5)/dl,.2,1))**kd:1,need=clamp(Math.round(Math.log2(m.F*g/(dl*.25))+sh+b),0,10);
+      if(z<need){for(let a=0;a<2;a++)for(let c=0;c<2;c++)visit(z+1,2*i+a,2*j+c);return}lv.push([z,i,j,d])};
+    const tw=tileW(0);for(let i=Math.floor(-200/tw);i<=Math.floor(1550/tw);i++)for(let j=0;j<=Math.floor(1750/tw);j++)visit(0,i,j)};
+  sel(0);if(lv.length>160){sel(-.6);if(lv.length>160)sel(-1.2)}P3N=lv.length;
+  for(const[z,i,j,d]of lv){const tw=tileW(z),k=z+","+i+","+j,t=TL.get(k);
+    if(!t){wish(z,i,j,d/m.D);tileFallback(z,i,j,tw);continue}
+    TL.delete(k);TL.set(k,t);if(!t.b)continue;
+    const a=smooth01((now-t.born)/260);if(a<1){fading=true;tileFallback(z,i,j,tw)}
+    GQ.push([t.b,i*tw,j*tw,tw,op*a,null])}
+  if(!BASE_OK&&WISH.length<4){let all=true;const tw=tileW(0);for(let i=Math.floor(MX0/tw);i<=Math.floor((MX0+MW/MR)/tw);i++)for(let j=Math.floor(MY0/tw);j<=Math.floor((MY0+MH/MR)/tw);j++){const k="0,"+i+","+j;if(!TL.has(k)){all=false;wish(0,i,j,1e4)}}if(all)BASE_OK=true}
+  GL.draw3(GQ,m);pump(fast);return fading||more}
+/* what the hills hide, for the lines, trains and labels drawn on the canvases above the dots: the same low ground
+   surface, rasterised coarsely (one depth per 4×4 px) on the CPU whenever the camera moves */
+const OB={key:"",on:false,bw:0,bh:0,z:null,t:0,dirty:false},OBS=6;
+/* while the camera is moving it is refreshed at most every other frame (a frame late is invisible); it always catches up once you stop */
+function occUpd(m){if(!m.P3||!m.zs||cam.tilt<.08||!(VMIP||mkVMIP())){OB.on=false;OB.key="";OB.dirty=false;return}
+  const key=m.ex+","+m.ey+","+m.ez+","+m.fx+","+m.fy+","+m.fz+","+W+","+H;if(key===OB.key)return;
+  const now=performance.now();if(FASTNOW&&OB.on&&now-OB.t<25){OB.dirty=true;return}OB.key=key;OB.t=now;OB.dirty=false;
+  const bw=Math.ceil(W/OBS),bh=Math.ceil(H/OBS);if(!OB.z||OB.bw!==bw||OB.bh!==bh){OB.z=new Float32Array(bw*bh);OB.bw=bw;OB.bh=bh}const Z=OB.z;Z.fill(0);OB.on=true;
+  const N=8,n1=N+1,X=new Float32Array(n1*n1),Y=new Float32Array(n1*n1),I=new Float32Array(n1*n1),hs=ELEVM.HMAX*m.zs/65025;
+  /* scan-convert one triangle into the block grid (edge functions stepped across each row), keeping the nearest depth */
+  const tri=(a,b,c)=>{const ax=X[a],ay=Y[a],bx=X[b],by=Y[b],cx=X[c],cy=Y[c],ar=(bx-ax)*(cy-ay)-(by-ay)*(cx-ax);if(ar>-1e-9&&ar<1e-9)return;
+    let x0=ax<bx?ax:bx;if(cx<x0)x0=cx;let x1=ax>bx?ax:bx;if(cx>x1)x1=cx;let y0=ay<by?ay:by;if(cy<y0)y0=cy;let y1=ay>by?ay:by;if(cy>y1)y1=cy;
+    x0=Math.max(0,Math.ceil(x0-.5));x1=Math.min(bw-1,Math.floor(x1-.5));y0=Math.max(0,Math.ceil(y0-.5));y1=Math.min(bh-1,Math.floor(y1-.5));if(x0>x1||y0>y1)return;
+    const inv=1/ar,ia=I[a],ib=I[b],ic=I[c],s0=(by-cy)*inv,s1=(cy-ay)*inv,da=ia-ic,db=ib-ic;
+    for(let y=y0;y<=y1;y++){const py=y+.5,px=x0+.5;let e0=((bx-px)*(cy-py)-(by-py)*(cx-px))*inv,e1=((cx-px)*(ay-py)-(cy-py)*(ax-px))*inv,k=y*bw+x0;
+      for(let x=x0;x<=x1;x++,k++,e0+=s0,e1+=s1){if(e0<0||e1<0||e0+e1>1)continue;const z=ic+e0*da+e1*db;if(z>Z[k])Z[k]=z}}};
+  for(const[L,cx,cy]of chunks(m,N,30,9)){const v=VMIP[L],sz=1<<L;
+    for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){const qx=cx*N+i,qy=cy*N+j,k=j*n1+i,hv=qx<v.w&&qy<v.h?v.d[qy*v.w+qx]:0;
+      const vx=GEO.x0+qx*sz*GEO.dx-m.ex,vy=GEO.y0+qy*sz*GEO.dy-m.ey,vz=hv*hv*hs-m.ez,w=vx*m.fx+vy*m.fy+vz*m.fz;
+      if(w<m.nr){I[k]=0;continue}const f=m.F/w;X[k]=(W/2+f*(vx*m.rx+vy*m.ry))/OBS;Y[k]=(H/2-f*(vx*m.ux+vy*m.uy+vz*m.uz))/OBS;I[k]=1/w}
+    for(let j=0;j<N;j++)for(let i=0;i<N;i++){const a=j*n1+i,b=a+1,c=a+n1,d=c+1;if(I[a]&&I[b]&&I[c])tri(a,b,c);if(I[b]&&I[d]&&I[c])tri(b,d,c)}}}
+/* is a screen point at view depth w behind the ground? */
+function occ(x,y,w){if(!OB.on)return false;const bx=x/OBS|0,by=y/OBS|0;if(x<0||y<0||bx>=OB.bw||by>=OB.bh)return false;const iz=OB.z[by*OB.bw+bx];return iz>0&&w*iz>1.04}
+/* project for the canvases: null when behind the eye, too far, or hidden by a hill */
+function p3v(m,x,y,z,far){const vx=x-m.ex,vy=y-m.ey,vz=z-m.ez,w=vx*m.fx+vy*m.fy+vz*m.fz;if(w<m.nr||w>far)return null;const k=m.F/w,sx=W/2+k*(vx*m.rx+vy*m.ry),sy=H/2-k*(vx*m.ux+vy*m.uy+vz*m.uz);
+  if(occ(sx,sy,w))return null;PZ=w;return[sx,sy]}
+
 /* ---- trains ---- */
 const NTRAINS=[];
 function buildTrains(){EDGES.forEach(e=>{if(e.type!=="shin"&&e.type!=="rail")return;const sp=e.type==="shin"?3.8:1.4,n=Math.max(1,Math.round(e.len/(e.type==="shin"?42:70)));NTRAINS.push({e,sp,n,C:2*e.len/sp,col:e.type==="shin"?"#BFF4FF":"#DCE3EE"})})}
@@ -2042,22 +2282,28 @@ function buildTrains(){EDGES.forEach(e=>{if(e.type!=="shin"&&e.type!=="rail")ret
 function segH(L,tt){const T=L.T;let lo=0,hi=T.length-1;while(hi-lo>1){const m=(lo+hi)>>1;if(T[m]<=tt)lo=m;else hi=m}const d=T[lo+1]-T[lo],f=d?(tt-T[lo])/d:0,dw=.22,e=f<dw?0:(f-dw)/(1-dw),k=e*e*(3-2*e);
   const hp=L.hk[Math.min(lo,L.hk.length-1)];along(hp,0);return along(hp,k*hp._c[hp._c.length-1])}
 function drawTrains(now){
-  if(!SET.trains||!LM())return;const m=updM(),s=cam.s,t=now/1000,lp=liftPM();ctx.setTransform(DPR,0,0,DPR,0,0);
+  if(!SET.trains||!LM())return;const m=updM(),s=cam.s,t=now/1000,lp=liftPM();ctx.setTransform(DPR,0,0,DPR,0,0);if(m.P3)occUpd(m);
+  /* where a train is on screen, and which way its track runs there; null when out of sight */
+  const PRJ=[0,0,0,0],prj=(wx,wy,wh,ux,uy,tun)=>{
+    if(m.P3){const z=wh*m.zs,q=p3s(m,wx,wy,z),w=PZ;if(w<m.nr||w>m.D*12)return null;
+      if(tun){const g=p3s(m,wx,wy,Math.max(z,gh(wx,wy)*m.zs));if(occ(g[0],g[1],PZ))return null}else if(occ(q[0],q[1],w))return null;
+      const q2=p3s(m,wx+ux*.02,wy+uy*.02,z);PRJ[0]=q[0];PRJ[1]=q[1];PRJ[2]=q2[0]-q[0];PRJ[3]=q2[1]-q[1];return PRJ}
+    const q=toS(m,wx,wy);PRJ[0]=q[0];PRJ[1]=q[1]-wh*lp;PRJ[2]=m.a*ux+m.c*uy;PRJ[3]=m.b*ux+m.d*uy;return PRJ};
   const out=(x,y)=>x<-10||x>W+10||y<-10||y>H+10;
   const dot=(x,y,col,r,dx,dy,side)=>{const L=Math.hypot(dx,dy)||1;const ox=-dy/L*side,oy=dx/L*side;x+=ox;y+=oy;if(out(x,y))return;
     if(SET.glow){ctx.globalAlpha=.28;ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,r*2.6,0,6.283);ctx.fill();ctx.globalAlpha=1}
     ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,r,0,6.283);ctx.fill();ctx.fillStyle="rgba(255,255,255,.85)";ctx.beginPath();ctx.arc(x,y,r*.45,0,6.283);ctx.fill()};
   if(s<14){const na=1-fade(s,8,14);ctx.globalAlpha=1;
     for(const T of NTRAINS){if(SET.hide[T.e.type])continue;for(let k=0;k<T.n;k++){let tt=(t+k/T.n*T.C)%T.C,fw=tt*T.sp<T.e.len,d=fw?tt*T.sp:2*T.e.len-tt*T.sp;
-      const[wx,wy,ang,wh,tun]=along(T.e.pts,d);const[x,y0]=toS(m,wx,wy),y=y0-wh*lp;const ux=Math.cos(ang),uy=Math.sin(ang);const sx=m.a*ux+m.c*uy,sy=m.b*ux+m.d*uy;
-      ctx.globalAlpha=na*(tun?.3:1);dot(x,y,T.col,T.sp>2?2:1.5,sx,sy,fw?1.6:-1.6);ctx.globalAlpha=1}}}
+      const[wx,wy,ang,wh,tun]=along(T.e.pts,d);const q=prj(wx,wy,wh,Math.cos(ang),Math.sin(ang),tun);if(!q)continue;
+      ctx.globalAlpha=na*(tun?.3:1);dot(q[0],q[1],T.col,T.sp>2?2:1.5,q[2],q[3],fw?1.6:-1.6);ctx.globalAlpha=1}}}
   const la=fade(s,2.4,4.5);if(la<=0)return;const r=clamp(s*.18,1.4,3.2);
-  for(const L of LINES){if(selLine&&selLine!==L)continue;if(SET.hide[lcat(L)]&&L!==selLine)continue;const cs=[[L.bb[0],L.bb[1]],[L.bb[2],L.bb[1]],[L.bb[2],L.bb[3]],[L.bb[0],L.bb[3]]].map(q=>toS(m,q[0],q[1]));if(Math.max(...cs.map(q=>q[0]))<-20||Math.min(...cs.map(q=>q[0]))>W+20||Math.max(...cs.map(q=>q[1]))<-20||Math.min(...cs.map(q=>q[1]))>H+20)continue;
+  for(const L of LINES){if(selLine&&selLine!==L)continue;if(SET.hide[lcat(L)]&&L!==selLine)continue;if(m.P3){if(!boxIn(m,L.bb[0]-.5,L.bb[1]-.5,0,L.bb[2]+.5,L.bb[3]+.5,ELIFT()+.01))continue}else{const cs=[[L.bb[0],L.bb[1]],[L.bb[2],L.bb[1]],[L.bb[2],L.bb[3]],[L.bb[0],L.bb[3]]].map(q=>toS(m,q[0],q[1]));if(Math.max(...cs.map(q=>q[0]))<-20||Math.min(...cs.map(q=>q[0]))>W+20||Math.max(...cs.map(q=>q[1]))<-20||Math.min(...cs.map(q=>q[1]))>H+20)continue}
     ctx.globalAlpha=la;const loop=L.o.loop,C=L.C,cyc=loop?C:2*C,n=L.nt;
     for(let k=0;k<n;k++){for(const dir of loop?[1,-1]:[1]){let tt=(t+k/n*cyc+(dir<0?C*.37:0))%cyc,fw=true;
       if(loop){if(dir<0)tt=C-tt%C,fw=false}else if(tt>C){tt=2*C-tt;fw=false}
-      tt=clamp(tt,0,C-1e-6);const[wx,wy,ang,wh]=segH(L,tt);const[x,y0]=toS(m,wx,wy),y=y0-wh*lp;const dx=Math.cos(ang),dy=Math.sin(ang),sx=m.a*dx+m.c*dy,sy=m.b*dx+m.d*dy;
-      dot(x,y,L.col,r,sx,sy,(fw?1:-1)*Math.min(2.4,r*.9))}}}
+      tt=clamp(tt,0,C-1e-6);const[wx,wy,ang,wh,tun]=segH(L,tt);const q=prj(wx,wy,wh,Math.cos(ang),Math.sin(ang),tun);if(!q)continue;
+      dot(q[0],q[1],L.col,r,q[2],q[3],(fw?1:-1)*Math.min(2.4,r*.9))}}}
   ctx.globalAlpha=1}
 
 /* ---- 3D rail: tracks are projected vertex by vertex each frame, so every point can sit at its own height ---- */
@@ -2071,16 +2317,33 @@ function railLv(p){if(p._lv)return p._lv;const n=p.length,lv=new Uint8Array(n).f
     for(let q=i+1;q<j;q++){const d=Math.abs(dx*(p[q][1]-ay)-dy*(p[q][0]-ax))/len;if(d>bd){bd=d;bk=q}}if(bd>tol){if(lv[bk]>L)lv[bk]=L;st.push(i,bk,bk,j)}}}
   return p._lv=lv}
 function railOn(p,V,mg){let b=p._bb;if(!b){b=[1e9,1e9,-1e9,-1e9,0];for(const q of p){b[0]=Math.min(b[0],q[0]);b[2]=Math.max(b[2],q[0]);b[1]=Math.min(b[1],q[1]);b[3]=Math.max(b[3],q[1]);b[4]=Math.max(b[4],q[2]||0)}p._bb=b}
+  /* 3D: in view at all, and how near (its nearest point's scale, for the detail level) */
+  if(V.P3){const m=V.P3,z1=b[4]*m.zs+.01;if(!boxIn(m,b[0]-.5,b[1]-.5,0,b[2]+.5,b[3]+.5,z1))return 0;const d=Math.max(boxDist(m,b[0],b[1],0,b[2],b[3],z1),m.nr);return d>m.D*30?0:m.F/d}
   let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const[u,v]of[[b[0],b[1]],[b[2],b[1]],[b[2],b[3]],[b[0],b[3]]]){const x=V.a*u+V.c*v+V.e,y=V.b*u+V.d*v+V.f;x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y)}
-  y0-=b[4]*V.lp;return x1>-mg&&x0<W+mg&&y1>-mg&&y0<H+mg}
+  y0-=b[4]*V.lp;return x1>-mg&&x0<W+mg&&y1>-mg&&y0<H+mg?cam.s:0}
 /* append one polyline to the surface (sf) and tunnel (tn) paths; collect viaduct pillars and tunnel portals */
 function railPath(p,Ls,V,sf,tn,pil,por,smooth){
+  if(V.P3)return railPath3(p,Ls,V.P3,sf,tn,pil,por,smooth);
   if(smooth){const q=p.map(v=>[V.a*v[0]+V.c*v[1]+V.e,V.b*v[0]+V.d*v[1]+V.f-(v[2]||0)*V.lp]);smoothOpen(sf,q);return}
   const lv=railLv(p),n=p.length;let pv=null,pc=-1,px=0,py=0,lx=-1e9,ly=-1e9;
   for(let i=0;i<n;i++){if(lv[i]>Ls&&i!==n-1)continue;const q=p[i],h=q[2]||0,x=V.a*q[0]+V.c*q[1]+V.e,y=V.b*q[0]+V.d*q[1]+V.f-h*V.lp;
     if(pv){const c=segCls(pv,q),P2=c===1?tn:sf;
       if(c!==pc||pc<0){P2.moveTo(px,py);if(por&&pc>=0&&(c===1)!==(pc===1))por.push(px,py)}P2.lineTo(x,y);
       if(c===2&&pil&&V.lp>0){const d=(h-(q[3]||0))*V.lp;if(d>2.5&&Math.hypot(x-lx,y-ly)>7){pil.push(x,y,y+d);lx=x;ly=y}}
+      pc=c}
+    pv=q;px=x;py=y}}
+/* 3D: every vertex through the perspective camera; the line breaks where it passes behind a hill or the eye.
+   Tunnels are tested at the ground above them, so a tunnel shows (faintly) wherever its hillside can be seen. */
+function railPath3(p,Ls,m,sf,tn,pil,por,smooth){const far=m.D*40,lv=smooth?null:railLv(p),n=p.length;
+  const pr=q=>{const h=q[2]||0,g=q[3];const vx=q[0]-m.ex,vy=q[1]-m.ey,vz=h*m.zs-m.ez,w=vx*m.fx+vy*m.fy+vz*m.fz;if(w<m.nr||w>far)return null;
+    const k=m.F/w,x=W/2+k*(vx*m.rx+vy*m.ry),y=H/2-k*(vx*m.ux+vy*m.uy+vz*m.uz);
+    if(g!==undefined&&g-h>25){const t=p3s(m,q[0],q[1],g*m.zs);if(occ(t[0],t[1],PZ))return null}else if(occ(x,y,w))return null;return[x,y,w]};
+  if(smooth){let run=[];for(const q of p){const s2=pr(q);if(s2)run.push(s2);else{if(run.length>1)smoothOpen(sf,run);run=[]}}if(run.length>1)smoothOpen(sf,run);return}
+  let pv=null,pc=-1,px=0,py=0,lx=-1e9,ly=-1e9;
+  for(let i=0;i<n;i++){if(lv[i]>Ls&&i!==n-1)continue;const q=p[i],s2=pr(q);if(!s2){pv=null;pc=-1;continue}const x=s2[0],y=s2[1];
+    if(pv){const c=segCls(pv,q),P2=c===1?tn:sf;
+      if(c!==pc||pc<0){P2.moveTo(px,py);if(por&&pc>=0&&(c===1)!==(pc===1))por.push(px,py)}P2.lineTo(x,y);
+      if(c===2&&pil&&m.zs>0){const g=p3s(m,q[0],q[1],(q[3]||0)*m.zs),d=g[1]-y;if(d>2.5&&g[1]>-1e4&&Math.hypot(x-lx,y-ly)>7){pil.push(x,y,g[1]);lx=x;ly=y}}
       pc=c}
     pv=q;px=x;py=y}}
 /* stroke a set of rail paths: faint tunnels underneath, viaduct pillars, the track itself, then portals */
@@ -2100,7 +2363,7 @@ function groundLoad(){new Response(new Blob([elevBytes()]).stream().pipeThrough(
 function gh(x,y){if(!GQ8)return 0;const M=ELEVM,fx=(x/(COSL*SCALE)+129-M.LON0)/M.STEP-.5,fy=(M.LAT0-46+y/SCALE)/M.STEP-.5,x0=Math.floor(fx),y0=Math.floor(fy),tx=fx-x0,ty=fy-y0;let v=0;
   for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++){const X=x0+dx,Y=y0+dy;if(X<0||Y<0||X>=M.W||Y>=M.H)continue;const k=GQ8[Y*M.W+X]/255;v+=(dx?tx:1-tx)*(dy?ty:1-ty)*k*k*M.HMAX}return v}
 function ptH(o,x,y){if(o._ghv!==GHV){o._gh=gh(x,y);o._ghv=GHV}return o._gh}
-function toSH(m,o,x,y){const a=m.a*x+m.c*y+m.e,b=m.b*x+m.d*y+m.f;return LPv?[a,b-ptH(o,x,y)*LPv]:[a,b]}
+function toSH(m,o,x,y){if(m.P3){const q=p3v(m,x,y,ptH(o,x,y)*m.zs,m.D*8);return q||[-1e5,-1e5]}const a=m.a*x+m.c*y+m.e,b=m.b*x+m.d*y+m.f;return LPv?[a,b-ptH(o,x,y)*LPv]:[a,b]}
 /* ---- the modern draw ---- */
 let selLine=null,selStn=null;
 function drawModern(){drawWorldM(performance.now(),false);drawLabelsM(16)}
@@ -2110,6 +2373,9 @@ function drawWorldM(now,fast){
   const m=updM();const s=cam.s,px=1/s;
   /* the sea and its soft vignette are the canvas's CSS background, so each frame starts from a cheap clear */
   ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;ctx.clearRect(0,0,cv.width,cv.height);
+  /* zoomed into a city, the glow steps back so the transit lines read clearly (drawn as lower tile opacity over the dark sea) */
+  const dimL=SET.lines?fade(s,3,9):0;let fading;
+  if(m.P3){GRA=s<3?.55*(1-fade(s,1.5,3)):0;occUpd(m);fading=drawTilesP(m,now,fast,1-.5*dimL)}else{
   ctx.setTransform(DPR*m.a,DPR*m.b,DPR*m.c,DPR*m.d,DPR*m.e,DPR*m.f);
   const corners=[[0,0],[W,0],[W,H],[0,H]].map(([a,b])=>toW(m,a,b));
   let vx0=1e9,vy0=1e9,vx1=-1e9,vy1=-1e9;corners.forEach(p=>{vx0=Math.min(vx0,p[0]);vx1=Math.max(vx1,p[0]);vy0=Math.min(vy0,p[1]);vy1=Math.max(vy1,p[1])});
@@ -2119,23 +2385,21 @@ function drawWorldM(now,fast){
   GRA=0;if(s<3&&GLON)GRA=.55*(1-fade(s,1.5,3));
   else if(s<3){ctx.globalAlpha=.55*(1-fade(s,1.5,3));ctx.strokeStyle="#16233A";ctx.lineWidth=px;ctx.setLineDash([1*px,5*px]);ctx.beginPath();
     for(let lo=128;lo<=146;lo++){const a=P(lo,30),b=P(lo,46);ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1])}for(let la=30;la<=46;la++){const a=P(127,la),b=P(147,la);ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1])}ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1}
-  /* zoomed into a city, the glow steps back so the transit lines read clearly (drawn as lower tile opacity over the dark sea) */
-  const dimL=SET.lines?fade(s,3,9):0;
   /* 3D: high ground rises up the screen, so also fetch the tiles whose ground lies just below the bottom edge */
   let tb=[vx0,vy0,vx1,vy1];const lift=GLON?ELIFT()*s*Math.sin(cam.tilt):0;
   if(lift>.5){tb=[1e9,1e9,-1e9,-1e9];[[0,0],[W,0],[W,H+lift],[0,H+lift]].forEach(([a,b])=>{const p=toW(m,a,b);tb[0]=Math.min(tb[0],p[0]);tb[2]=Math.max(tb[2],p[0]);tb[1]=Math.min(tb[1],p[1]);tb[3]=Math.max(tb[3],p[1])})}
-  const fading=drawTilesM(tb[0],tb[1],tb[2],tb[3],now,fast,1-.5*dimL,lift>.5?[vx0,vy0,vx1,vy1]:null);
+  fading=drawTilesM(tb[0],tb[1],tb[2],tb[3],now,fast,1-.5*dimL,lift>.5?[vx0,vy0,vx1,vy1]:null)}
   /* everything below is drawn in screen space: each track vertex is projected with its own height */
-  ctx.setTransform(DPR,0,0,DPR,0,0);LPv=liftPM();const V={a:m.a,b:m.b,c:m.c,d:m.d,e:m.e,f:m.f,lp:LPv},Ls=lodFor(s);
+  ctx.setTransform(DPR,0,0,DPR,0,0);ctx.lineCap="round";ctx.lineJoin="round";LPv=liftPM();const V={a:m.a,b:m.b,c:m.c,d:m.d,e:m.e,f:m.f,lp:LPv,P3:m.P3?m:null},Ls=lodFor(s);
   /* national network: each mode has its own line style (see TM / tstyle and the map key) */
   const na=1-fade(s,9,16);
   if(na>0){const wn=clamp(.7+s*.45,.75,1.1);
     for(const t of["ferry","trail","bridge","road","rail","shin"]){if(SET.hide[t])continue;const sf=new Path2D(),tn=new Path2D(),pil=[],por=[];
-      for(const e of EDGES){if(e.type!==t||!railOn(e.pts,V,40))continue;railPath(e.pts,Ls,V,sf,tn,pil,por,SMOOTH[t])}
+      for(const e of EDGES){if(e.type!==t)continue;const sl=railOn(e.pts,V,40);if(!sl)continue;railPath(e.pts,V.P3?lodFor(sl):Ls,V,sf,tn,pil,por,SMOOTH[t])}
       drawRail(t,wn,null,sf,tn,pil,por,na)}}
   /* the chosen route: a glowing band in the route colour, with the real mode drawn inside it */
   if(routeSel){const rc=routeSel.col;
-    routeSel.legs.forEach(L=>{if(!railOn(L.pts,V,40))return;const sf=new Path2D(),tn=new Path2D(),pil=[],por=[];railPath(L.pts,Ls,V,sf,tn,pil,por,SMOOTH[L.net]);
+    routeSel.legs.forEach(L=>{const sl=railOn(L.pts,V,40);if(!sl)return;const sf=new Path2D(),tn=new Path2D(),pil=[],por=[];railPath(L.pts,V.P3?lodFor(sl):Ls,V,sf,tn,pil,por,SMOOTH[L.net]);
       for(const[p2,al]of[[tn,.35],[sf,1]]){ctx.globalAlpha=.22*al;ctx.lineWidth=16;ctx.strokeStyle=rc;ctx.stroke(p2);ctx.globalAlpha=.85*al;ctx.lineWidth=8;ctx.stroke(p2);ctx.globalAlpha=al;
         ctx.lineWidth=5.4;ctx.strokeStyle="rgba(4,7,13,.9)";ctx.stroke(p2);tstyle(ctx,L.net||"rail",1,null,p2)}
       drawRail(L.net||"rail",1,null,new Path2D(),new Path2D(),pil,por,1)});
@@ -2144,13 +2408,13 @@ function drawWorldM(now,fast){
   const la=fade(s,2.2,4);
   if(la>0&&SET.lines){const wz=clamp(s*.05,.75,1.3),Lc=s>8?4:Ls;
     for(const L of LINES_ORD){const cat=lcat(L);if(SET.hide[cat])continue;const dim=selLine&&selLine!==L?.14:1;const sf=new Path2D(),tn=new Path2D(),pil=[],por=[];let any=false;
-      for(const hp of L.draw)if(railOn(hp,V,10)){railPath(hp,Lc,V,sf,tn,pil,por,false);any=true}
+      for(const hp of L.draw){const sl=railOn(hp,V,10);if(sl){railPath(hp,V.P3?lodFor(Math.max(sl,8.1)):Lc,V,sf,tn,pil,por,false);any=true}}
       if(any)drawRail(cat,wz,L.col,sf,tn,pil,por,la*dim)}
     ctx.globalAlpha=1}
   /* stations, batched by style so hundreds of dots cost a handful of draw calls */
   for(const S of STNS){S.on=false;S.sx=S.sy=-1e4}
   if(la>0&&SET.lines&&s>5){const big=s>22,a0=fade(s,5,8);const ic=new Path2D(),one=new Map();let selS=null;
-    for(const S of STNS){const x=m.a*S.x+m.c*S.y+m.e,y=m.b*S.x+m.d*S.y+m.f-(S.h||0)*LPv;if(x<-10||x>W+10||y<-10||y>H+10)continue;S.sx=x;S.sy=y;S.on=true;const dim=selLine&&!S.lines.includes(selLine);if(dim&&S!==selStn)continue;if(S!==selStn&&S.lines.every(l=>SET.hide[lcat(l)]))continue;
+    for(const S of STNS){let x,y;if(m.P3){const q=p3v(m,S.x,S.y,(S.h||0)*m.zs,m.D*5);if(!q)continue;x=q[0];y=q[1]}else{x=m.a*S.x+m.c*S.y+m.e;y=m.b*S.x+m.d*S.y+m.f-(S.h||0)*LPv}if(x<-10||x>W+10||y<-10||y>H+10)continue;S.sx=x;S.sy=y;S.on=true;const dim=selLine&&!S.lines.includes(selLine);if(dim&&S!==selStn)continue;if(S!==selStn&&S.lines.every(l=>SET.hide[lcat(l)]))continue;
       const tr=S.lines.length>1,r=(tr?2.6:1.7)*(big?1.45:1);if(S===selStn)selS=[x,y,r];
       if(tr){ic.moveTo(x+r,y);ic.arc(x,y,r,0,6.283)}else{const c=S.lines[0].col;let p2=one.get(c);if(!p2){p2=new Path2D();one.set(c,p2)}p2.moveTo(x+r,y);p2.arc(x,y,r,0,6.283)}}
     ctx.globalAlpha=a0;ctx.lineWidth=big?1.6:1.1;
@@ -2160,7 +2424,7 @@ function drawWorldM(now,fast){
     ctx.globalAlpha=1}
   /* how you travel each leg of the chosen route */
   if(routeSel&&s<11){const ba=1-fade(s,7,11);
-    for(const b of routeSel.badges){const[x,y0]=toS(m,b.at[0],b.at[1]),y=y0-(b.at[3]||0)*LPv;if(x<-20||x>W+20||y<-20||y>H+20)continue;const T=TM[b.net]||TM.rail;ctx.globalAlpha=ba;
+    for(const b of routeSel.badges){let x,y;if(m.P3){const q=p3v(m,b.at[0],b.at[1],(b.at[3]||0)*m.zs,m.D*10);if(!q)continue;x=q[0];y=q[1]}else{const q=toS(m,b.at[0],b.at[1]);x=q[0];y=q[1]-(b.at[3]||0)*LPv}if(x<-20||x>W+20||y<-20||y>H+20)continue;const T=TM[b.net]||TM.rail;ctx.globalAlpha=ba;
       ctx.beginPath();ctx.arc(x,y,12.5,0,6.283);ctx.fillStyle="rgba(8,12,21,.94)";ctx.fill();ctx.lineWidth=2;ctx.strokeStyle=routeSel.col;ctx.stroke();
       drawIcon(ctx,T.ic,x,y,15,T.col)}
     ctx.globalAlpha=1}
@@ -2168,10 +2432,10 @@ function drawWorldM(now,fast){
 /* the label layer: names, pins, spot icons. Text is always drawn at its real size, so it stays sharp at every zoom. */
 let LF=0,LANIM=false,LDT=16;
 function drawLabelsM(dt){LF++;LANIM=false;LDT=dt;
-  const m=updM();const s=cam.s;LPv=liftPM();
+  const m=updM();const s=cam.s;LPv=liftPM();if(m.P3)occUpd(m);
   ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,lcv.width,lcv.height);ctx.setTransform(DPR,0,0,DPR,0,0);ctx.globalAlpha=1;
   if(s<2.4){ctx.globalAlpha=1-fade(s,1.4,2.4);ctx.textAlign="center";ctx.textBaseline="middle";ctx.font=`600 10px "Zen Kaku Gothic New", sans-serif`;if("letterSpacing"in ctx)ctx.letterSpacing="5px";ctx.fillStyle="#30445F";
-    SEALBL.forEach(([k,e,lo,la2,sz])=>{if(sz<12||!e)return;const[x,y]=toS(m,...P(lo,la2));ctx.fillText(e,x,y)});if("letterSpacing"in ctx)ctx.letterSpacing="0px";ctx.globalAlpha=1}
+    SEALBL.forEach(([k,e,lo,la2,sz])=>{if(sz<12||!e)return;const w=P(lo,la2),[x,y]=m.P3?p3s(m,w[0],w[1],0):toS(m,...w);ctx.fillText(e,x,y)});if("letterSpacing"in ctx)ctx.letterSpacing="0px";ctx.globalAlpha=1}
   for(const o of PLACES){o.on=false;const[x,y]=toSH(m,o,o.x,o.y);o.sx=x;o.sy=y;if(x<-200||x>W+200||y<-200||y>H+280)continue;o.on=true}
   LBL.length=0;drawWards(m);drawSymbols(m);drawSpots(m);drawLabels(m);drawStationLabels(m);drawDistricts(m);
   const cp=$("#compass");const show=Math.abs(cam.rot)>.05||cam.tilt>.7;if(cp.hidden===show)cp.hidden=!show;if(show)cp.style.transform=`rotate(${cam.rot}rad)`;
@@ -2232,8 +2496,11 @@ function buildSettings(){
     <label class="tg"><input type="checkbox" data-k="terrain" ${SET.terrain?"checked":""}><span>3D terrain${GLON||!(TW.ok||TW.failed)?"":" <small style=\"color:var(--muted)\">(not supported here)</small>"}</span></label>
     <div style="padding:6px 2px 0;${SET.terrain?"":"opacity:.35;pointer-events:none"}"><div style="display:flex;justify-content:space-between;font-size:12.5px"><span>Height</span><b id="srlv" style="color:var(--acc)">${rv()}</b></div>
       <input type="range" id="srl" min="1" max="10" step="0.5" value="${SET.relief}" ${SET.terrain?"":"disabled"} aria-label="Terrain height multiplier">
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>True height</span><span>×10</span></div></div></div>`;
-    const rl=p.querySelector("#srl");if(rl)rl.oninput=()=>{SET.relief=+rl.value;saveSet();p.querySelector("#srlv").textContent=rv();invalidate()};
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>True height</span><span>×10</span></div></div>
+    <h4>Camera</h4><div class="seg"><button data-view="tilt" aria-pressed="${!P3ON()}">Tilt · 80°</button><button data-view="3d" aria-pressed="${P3ON()}" ${GLON||!(TW.ok||TW.failed)?"":"disabled style=\"opacity:.4\""}>3D camera</button></div>
+    <p style="margin:6px 2px 0;font-size:11.5px;color:var(--muted)">${P3ON()?"Tilt right over with two fingers to stand on the ground and look across the hills.":"The flat map, tipped up to 80°."}</p></div>`;
+    const rl=p.querySelector("#srl");if(rl)rl.oninput=()=>{SET.relief=+rl.value;saveSet();p.querySelector("#srlv").textContent=rv();clampCam();invalidate()};
+    p.querySelectorAll("[data-view]").forEach(x=>x.onclick=()=>{if(x.disabled)return;SET.view=x.dataset.view;saveSet();setView();paint()});
     p.querySelectorAll("[data-pal]").forEach(x=>x.onclick=()=>{SET.pal=x.dataset.pal;saveSet();setRamp();clearTiles();invalidate();paint();paintKey()});
     let tmo=0;const r=p.querySelector("#sbr");if(r)r.oninput=()=>{SET.bright=+r.value;saveSet();clearTimeout(tmo);tmo=setTimeout(()=>{clearTiles();invalidate();paintKey()},120)};
     p.querySelectorAll("[data-k]").forEach(x=>x.onchange=()=>{SET[x.dataset.k]=x.checked;saveSet();if(x.dataset.k==="glow")clearTiles();if(x.dataset.k==="terrain")paint();invalidate()})};
@@ -2276,7 +2543,7 @@ function paintKey(){const kp=$("#keyp");if(!kp||kp.hidden)return;
   kp.querySelectorAll("[data-h]").forEach(b=>b.onclick=()=>{const t=b.dataset.h;if(SET.hide[t])delete SET.hide[t];else SET.hide[t]=true;saveSet();invalidate();paintKey()})}
 /* redraw whatever the guide is showing (after switching map style) */
 function redo(){if(st.place&&PL[st.place])openPlace(st.place,st.ctx);else if(st.tab==="routes")showRoutes(st.route&&st.route.id);else if(st.tab==="nov")showNov();else showExplore(st.region,true)}
-function applyMode(user){app.classList.add("lights");S_MAX=110;clampCam();selLine=null;selStn=null;
+function applyMode(user){app.classList.add("lights");S_MAX=P3ON()?400:110;clampCam();selLine=null;selStn=null;
   document.body.style.background="#070B14";$("#compass").textContent="N";WK="";labelsDue=true;
   snaps=snapList();if(user){booting=true;setSheet("dock",true);redo();booting=false}
   invalidate()}
