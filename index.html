@@ -1794,7 +1794,7 @@ function waterAt(x,y){for(const m of MOATS)if(x>m[0]-.12&&x<m[0]+m[2]+.12&&y>m[1
 function parkAt(x,y){for(const pk of PARKS){if(pk.k==="w")continue;const dx=(x-pk.x)/pk.rx,dy=(y-pk.y)/pk.ry;if(dx*dx+dy*dy<1)return true}for(const m of MOATS)if(x>m[0]&&x<m[0]+m[2]&&y>m[1]&&y<m[1]+m[3])return true;return false}
 
 /* ---- dot tiles, cached per zoom level ---- */
-const TL=new Map(),LT_SP=4,LT_N=64;let tlPx=0;
+const TL=new Map(),LT_SP=1.5,LT_N=170;let tlPx=0;   /* dots LT_SP tile px apart, LT_N×LT_N per tile */
 const lvl=s=>clamp(Math.round(Math.log2(s/.25)),0,10);
 function clearTiles(){TL.forEach(c=>{c.width=c.height=0});TL.clear();tlPx=0}
 function genTile(z,i,j){
@@ -1810,14 +1810,14 @@ function genTile(z,i,j){
   for(let a=0;a<LT_N;a++)for(let b=0;b<LT_N;b++){
     const wx=x0+(a+.5)*c,wy=y0+(b+.5)*c;if(!isLand(wx,wy))continue;any=true;
     const px=(a+.5)*LT_SP,py=(b+.5)*LT_SP;
-    if(cityT){if(waterAt(wx,wy)){water.moveTo(px+1.1,py);water.arc(px,py,1.1,0,6.283);continue}if(parkAt(wx,wy)){park.moveTo(px+1.1,py);park.arc(px,py,1.1,0,6.283);continue}}
+    if(cityT){if(waterAt(wx,wy)){water.moveTo(px+rl*.83,py);water.arc(px,py,rl*.83,0,6.283);continue}if(parkAt(wx,wy)){park.moveTo(px+rl*.83,py);park.arc(px,py,rl*.83,0,6.283);continue}}
     let mf=1;for(const m of mt){const dx=(wx-m.x)/m.rx,dy=(wy-m.y)/m.ry,d=dx*dx+dy*dy;if(d<1)mf*=1-.85*m.w*(1-d)}
     let D=22*mf;for(const o of list){const dx=wx-o.x,dy=wy-o.y,d2=dx*dx+dy*dy;if(d2<o.R2)D+=o.pk*Math.exp(-d2/o.k)}
     if(z>=6){const ns=Math.max(c*2.2,.28),nb=vnoise(wx/ns+3.1,wy/ns+1.7);D*=.3+1.4*nb*Math.sqrt(nb)}else D*=(.45+1.1*vnoise(wx/(c*2.6)+z*13.1,wy/(c*2.6)+z*7.7))*(z<=1?9:z<=3?4:z<=4?2:1);
     for(const[a2,b2]of roads){const d=segDist(wx,wy,a2,b2);if(d<.2)D+=5000*Math.exp(-d*d/.006)}
     const v=Math.pow(clamp((Math.log10(D*br+1)-2.0)/2.7,0,1),1.5);
     if(v<.05){land.moveTo(px+rl,py);land.arc(px,py,rl,0,6.283);continue}
-    const q=Math.min(15,v*16|0),r=.6+1.25*v;lit[q].moveTo(px+r,py);lit[q].arc(px,py,r,0,6.283);
+    const q=Math.min(15,v*16|0),r=(.6+1.25*v)*LT_SP/4;lit[q].moveTo(px+r,py);lit[q].arc(px,py,r,0,6.283);
     if(v>.38){const gr=r*2.7;glow[q].moveTo(px+gr,py);glow[q].arc(px,py,gr,0,6.283)}}
   const dev=Math.round(LT_N*LT_SP*DPR),cv2=document.createElement("canvas");cv2.width=cv2.height=any?dev:1;
   if(any){const x=cv2.getContext("2d");x.scale(DPR,DPR);x.fillStyle=LAND_M;x.fill(land);x.fillStyle=PARK_M;x.fill(park);x.fillStyle="#1C3D63";x.fill(water);
@@ -1831,10 +1831,10 @@ function genTilePop(z,c,tw,x0,y0,hi){
   for(let a=0;a<LT_N;a++)for(let b=0;b<LT_N;b++){
     const wx=x0+(a+.5)*c,wy=y0+(b+.5)*c;if(!isLand(wx,wy))continue;any=true;
     const px=(a+.5)*LT_SP,py=(b+.5)*LT_SP;
-    if(cityT){if(waterAt(wx,wy)){water.moveTo(px+1.1,py);water.arc(px,py,1.1,0,6.283);continue}if(parkAt(wx,wy)){park.moveTo(px+1.1,py);park.arc(px,py,1.1,0,6.283);continue}}
+    if(cityT){if(waterAt(wx,wy)){water.moveTo(px+rl*.83,py);water.arc(px,py,rl*.83,0,6.283);continue}if(parkAt(wx,wy)){park.moveTo(px+rl*.83,py);park.arc(px,py,rl*.83,0,6.283);continue}}
     let v=popV(popAt(POPG,wx,wy,lvl),br);
     if(v<.03){land.moveTo(px+rl,py);land.arc(px,py,rl,0,6.283);continue}
-    v=Math.min(1,v);const q=Math.min(15,v*16|0);let r=.6+1.25*v;if(z>=5)r*=.74+.52*vnoise(wx/.35+3.1,wy/.35+1.7);
+    v=Math.min(1,v);const q=Math.min(15,v*16|0);let r=(.6+1.25*v)*LT_SP/4;if(z>=5)r*=.74+.52*vnoise(wx/.35+3.1,wy/.35+1.7);
     lit[q].moveTo(px+r,py);lit[q].arc(px,py,r,0,6.283);
     if(v>.45){const gr=r*2.7;glow[q].moveTo(px+gr,py);glow[q].arc(px,py,gr,0,6.283)}}
   const dev=Math.round(LT_N*LT_SP*DPR),cv2=document.createElement("canvas");cv2.width=cv2.height=any?dev:1;
@@ -1849,7 +1849,7 @@ const EMPTY={width:1,height:1};
 function putTile(key,b){const old=TL.get(key);if(old)dropTile(old);TL.delete(key);const px=b?(b.gl?b.bytes:b.width*b.height):0;TL.set(key,{b,born:performance.now(),px});tlPx+=px;
   /* least-recently-used tiles go first; the whole-country level 0 is never dropped */
   if(TL.size>2500)for(const[k0,t0]of TL){if(TL.size<=2000)break;if(!t0.b&&!k0.startsWith("0,")){TL.delete(k0)}}
-  if(tlPx>20e6)for(const[k0,t0]of TL){if(tlPx<=20e6)break;if(k0.startsWith("0,")||k0===key)continue;dropTile(t0);TL.delete(k0)}}
+  if(tlPx>80e6)for(const[k0,t0]of TL){if(tlPx<=80e6)break;if(k0.startsWith("0,")||k0===key)continue;dropTile(t0);TL.delete(k0)}}
 function freeB(b){if(!b)return;if(b.gl)GL.free(b);else if(b.close)b.close();else b.width=b.height=0}
 function dropTile(t){tlPx-=t.px;freeB(t.b)}
 /* after a colour or brightness change the old tiles stay on screen as stand-ins until the new ones fade in */
@@ -1865,28 +1865,33 @@ function clearTiles(){dropStale();TL.forEach((t,k)=>{if(k.startsWith("0,")||k.st
 const GLC=$("#gc");let GLON=false,GRA=0;const GQ=[];
 const GRL=Math.max(.55,Math.min(1.4,LT_SP*.33));   /* a ground dot's radius in tile px (the workers use the same) */
 function glOff(){GLON=false;app.classList.remove("gl3");dropStale();TL.forEach(t=>dropTile(t));TL.clear();tlPx=0;BASE_OK=false;prevZ=-1;invalidate()}
+/* every dot carries two looks: its own (this tile's detail) and its parent tile's (one level coarser), blended by zoom.
+   Ground dots (colour 16+) keep their slope in the size byte; lights and glows keep their radius (tile px ×32). */
+const DOTCOM=`uniform float uEx,uSl,uGrl,uGp;
+float rad(float rb,int ci){if(uGp>.5||ci<16)return rb*(1./32.);float s=rb*(1.2/255.);
+ /* on a steep, exaggerated face the dots spread apart as the view tips over, so they grow to close the gaps */
+ return (ci==17||ci==18?uGrl*.83:uGrl)*mix(1.,min(2.2,sqrt(1.+s*s*uEx*uEx)),uSl);}`;
 const GLSL={
  dotV:`#version 300 es
-layout(location=0) in vec2 aQ;layout(location=1) in vec2 aP;layout(location=2) in float aH;layout(location=3) in float aR;layout(location=4) in float aC;
-uniform vec2 uO;uniform mat2 uM;uniform float uLift,uDpr,uGb,uEx,uSl;uniform vec2 uRes;uniform vec4 uClip;
-out vec2 vL;flat out int vC;
-void main(){vec2 p=aP*(1./128.);int ci=int(aC+.5);vC=ci;
- if(p.x<uClip.x||p.y<uClip.y||p.x>=uClip.z||p.y>=uClip.w){vL=vec2(0.);gl_Position=vec4(-2.,-2.,0.,1.);return;}
- float r=aR*(1./32.);
- /* ground dots carry their slope (0–1.2 rise per metre) in place of a size: on a steep, exaggerated face the dots
-    spread apart as the view tips over, so they grow to close the gaps */
- if(uGb>0.){float s=aR*(1.2/255.);r=(ci==17||ci==18?1.1:uGb)*mix(1.,min(2.2,sqrt(1.+s*s*uEx*uEx)),uSl);}
- vec2 e=1.+.75/max(r*uDpr*vec2(length(uM[0]),length(uM[1])),vec2(.3));vL=aQ*e;   /* room for a ¾-pixel anti-aliased edge on each axis */
- vec2 sp=uO+uM*(p+aQ*e*r)-vec2(0.,aH*uLift);
+layout(location=0) in vec2 aP;layout(location=2) in float aH;layout(location=3) in float aR;layout(location=4) in float aC;
+layout(location=5) in float aRp;layout(location=6) in float aCp;layout(location=7) in float aB;layout(location=8) in float aJ;
+uniform vec2 uO;uniform mat2 uM;uniform float uLift,uDpr,uLd,uZ,uTf,uBt,uPs,uPm;uniform vec2 uRes;uniform vec4 uClip;
+flat out int vC;flat out int vCp;out float vA;out float vT;out float vHf;out float vR;
+${DOTCOM}
+void main(){vec2 p=aP*(1./128.);int ci=int(aC+.5),cp=int(aCp+.5);vC=ci;vCp=cp;vT=1.;
+ if(p.x<uClip.x||p.y<uClip.y||p.x>=uClip.z||p.y>=uClip.w){vA=0.;vHf=1.;vR=1.;gl_PointSize=0.;gl_Position=vec4(-2.,-2.,0.,1.);return;}
+ float Ld=uLd,zc=clamp(floor(Ld+.5),0.,10.),gc=zc<.5?1.:smoothstep(-.45,.45,Ld-zc),gv=aB<.5?1.:smoothstep(-.45,.45,Ld-aB);
+ float al=aB>=uBt?uTf:1.;
+ if(gv<=0.||al<=0.){vA=0.;vHf=1.;vR=1.;gl_PointSize=0.;gl_Position=vec4(-2.,-2.,0.,1.);return;}
+ float t=(uZ<.5?1.:smoothstep(-.5,.5,Ld-uZ))*uTf;vT=t;
+ /* radius in this tile's px: sized to the finest grid that is (partly) grown at this zoom, so ink stays even */
+ float r=mix(rad(aRp,cp),rad(aR,ci),t)*exp2(uZ-zc+1.)/sqrt(1.+3.*gc*gc)*gv;
+ vec2 sc=vec2(length(uM[0]),length(uM[1]));float rd=r*min(sc.x,sc.y)*uDpr;if(rd<.6){al*=rd*rd/.36;r=.6/(uDpr*min(sc.x,sc.y));}
+ vA=al;vR=r;
+ /* the dot's ellipse on screen fits in a square of half-size hf (plus room for a ¾-pixel anti-aliased edge) */
+ float hf=r*max(length(vec2(uM[0][0],uM[1][0])),length(vec2(uM[0][1],uM[1][1])))+.75/uDpr;vHf=hf;gl_PointSize=min(2.*hf*uDpr*uPs,uPm);
+ vec2 sp=uO+uM*p-vec2(0.,aH*uLift);
  gl_Position=vec4(sp.x/uRes.x*2.-1.,1.-sp.y/uRes.y*2.,0.,1.);}`,
- dotF:`#version 300 es
-precision highp float;in vec2 vL;flat in int vC;uniform vec3 uPal[139];uniform float uA;out vec4 o;
-void main(){float d=length(vL),fw=max(fwidth(d),1e-4),c=clamp((1.-d)/fw+.5,0.,1.);if(c<=0.)discard;float a=c*uA;o=vec4(uPal[vC]*a,a);}`,
- glowF:`#version 300 es
-precision highp float;in vec2 vL;flat in int vC;uniform float uA;
-layout(location=0) out vec4 o0;layout(location=1) out vec4 o1;layout(location=2) out vec4 o2;
-void main(){float d=length(vL),fw=max(fwidth(d),1e-4),c=clamp((1.-d)/fw+.5,0.,1.);if(c<=0.)discard;float v=c*uA;ivec4 k=ivec4(vC-4);
- o0=vec4(equal(k,ivec4(0,1,2,3)))*v;o1=vec4(equal(k,ivec4(4,5,6,7)))*v;o2=vec4(equal(k,ivec4(8,9,10,11)))*v;}`,
  fullV:`#version 300 es
 void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));gl_Position=vec4(p*2.-1.,0.,1.);}`,
  compF:`#version 300 es
@@ -1909,28 +1914,41 @@ void main(){vec2 w=uW0+uWM*(vec2(gl_FragCoord.x,uH-gl_FragCoord.y)/uDpr);float c
     Depth is tested against the ground (below) so hills hide what is behind them; it is nudged toward the eye a touch
     so a dot never hides under the ground it sits on. Far away everything fades into the haze. */
  dotV3:`#version 300 es
-layout(location=0) in vec2 aQ;layout(location=1) in vec2 aP;layout(location=2) in float aH;layout(location=3) in float aR;layout(location=4) in float aC;
-uniform mat4 uVP;uniform vec3 uO;uniform float uZs,uDpr,uF,uNear,uBias,uZa,uZb,uJit,uGb,uEx,uSl;uniform vec2 uRes;uniform vec4 uClip;uniform vec3 uFog;
-out vec2 vL;flat out int vC;out float vA;
-void main(){vec2 p=aP*(1./128.);int ci=int(aC+.5);vC=ci;
- if(p.x<uClip.x||p.y<uClip.y||p.x>=uClip.z||p.y>=uClip.w){vL=vec2(0.);vA=0.;gl_Position=vec4(-2.,-2.,0.,1.);return;}
- /* seen edge-on, a perfectly regular grid of dots beats into moiré stripes, so tipped views shake each dot a little */
- if(uJit>0.)p+=(vec2(fract(sin(dot(aP,vec2(12.9898,78.233)))*43758.55),fract(sin(dot(aP,vec2(39.346,11.135)))*24634.63))-.5)*uJit;
- vec4 c=uVP*vec4(uO.xy+p*uO.z,aH*uZs,1.);
- if(c.w<uNear){vL=vec2(0.);vA=0.;gl_Position=vec4(-2.,-2.,0.,1.);return;}
- float r=aR*(1./32.);if(uGb>0.){float s=aR*(1.2/255.);r=(ci==17||ci==18?1.1:uGb)*mix(1.,min(2.2,sqrt(1.+s*s*uEx*uEx)),uSl);}
- float rp=min(r*uO.z*uF/c.w,r*2.2),e=1.+.75/max(rp*uDpr,.3);vL=aQ*e;
- vA=1.-smoothstep(uFog.x,uFog.y,c.w)*.92;
- c.xy+=aQ*e*rp*2./uRes*c.w;
+layout(location=0) in vec2 aP;layout(location=2) in float aH;layout(location=3) in float aR;layout(location=4) in float aC;
+layout(location=5) in float aRp;layout(location=6) in float aCp;layout(location=7) in float aB;layout(location=8) in float aJ;
+uniform mat4 uVP;uniform vec3 uO,uE;uniform float uZs,uDpr,uF,uNear,uBias,uZa,uZb,uJit,uD,uKd,uLb,uZ,uTf,uBt,uSP,uPs,uPm;uniform vec2 uRes;uniform vec4 uClip;uniform vec3 uFog;
+flat out int vC;flat out int vCp;out float vA;out float vT;out float vHf;out float vR;
+${DOTCOM}
+void main(){vec2 p=aP*(1./128.);int ci=int(aC+.5),cp=int(aCp+.5);vC=ci;vCp=cp;vT=1.;
+ if(p.x<uClip.x||p.y<uClip.y||p.x>=uClip.z||p.y>=uClip.w){vA=0.;vHf=1.;vR=1.;gl_PointSize=0.;gl_Position=vec4(-2.,-2.,0.,1.);return;}
+ vec3 w=vec3(uO.xy+p*uO.z,aH*uZs);
+ /* the detail this dot's own spot wants (the same rule that picks the tiles): every dot grows in and every colour
+    blends by its own distance, so there are no tile edges or level steps to see */
+ float ds=length(w-uE),dl=max(uD+(ds-uD)*uKd,1e-4),gt=uKd>0.?pow(sqrt(clamp((uE.z-w.z*.5)/dl,.2,1.)),uKd):1.;
+ float Ld=log2(uF*gt/(dl*.25))+uLb,zc=clamp(floor(Ld+.5),0.,10.),gc=zc<.5?1.:smoothstep(-.45,.45,Ld-zc),gv=aB<.5?1.:smoothstep(-.45,.45,Ld-aB);
+ float al=aB>=uBt?uTf:1.;
+ if(gv<=0.||al<=0.){vA=0.;vHf=1.;vR=1.;gl_PointSize=0.;gl_Position=vec4(-2.,-2.,0.,1.);return;}
+ float t=(uZ<.5?1.:smoothstep(-.5,.5,Ld-uZ))*uTf;vT=t;
+ /* seen edge-on, a perfectly regular grid of dots beats into moiré stripes, so tipped views shake each dot a little
+    (the same way in every tile, so a dot never jumps when its tile changes) */
+ if(uJit>0.){vec2 jh=vec2(mod(aJ,16.),floor(aJ/16.))/15.-.5;w.xy+=jh*uJit*uSP/(.25*exp2(Ld));}
+ vec4 c=uVP*vec4(w,1.);
+ if(c.w<uNear){vA=0.;vHf=1.;vR=1.;gl_PointSize=0.;gl_Position=vec4(-2.,-2.,0.,1.);return;}
+ float r=mix(rad(aRp,cp),rad(aR,ci),t),Lr=log2(uF/(c.w*.25));
+ float rp=min(r*exp2(Lr-zc+1.)/sqrt(1.+3.*gc*gc),r*2.6)*gv,rd=rp*uDpr;
+ if(rd<.6){al*=rd*rd/.36;rp=.6/uDpr;}
+ vR=rp;vHf=rp+.75/uDpr;gl_PointSize=min(2.*vHf*uDpr*uPs,uPm);
+ vA=(1.-smoothstep(uFog.x,uFog.y,c.w)*.92)*al;
  float vb=max(uNear,c.w*(1.-uBias));c.z=(uZa*vb+uZb)/vb*c.w;gl_Position=c;}`,
  dotF3:`#version 300 es
-precision highp float;in vec2 vL;flat in int vC;in float vA;uniform vec3 uPal[139];uniform float uA;out vec4 o;
-void main(){float d=length(vL),fw=max(fwidth(d),1e-4),c=clamp((1.-d)/fw+.5,0.,1.);if(c<=0.)discard;float a=c*uA*vA;o=vec4(uPal[vC]*a,a);}`,
+precision highp float;flat in int vC;flat in int vCp;in float vA;in float vT;in float vHf;in float vR;uniform vec3 uPal[139];uniform float uA;uniform mat2 uMi;out vec4 o;
+void main(){vec2 vL=uMi*((gl_PointCoord*2.-1.)*vHf)/vR;float d=length(vL),fw=max(fwidth(d),1e-4),c=clamp((1.-d)/fw+.5,0.,1.);if(c<=0.)discard;float a=c*uA*vA;o=vec4(mix(uPal[vCp],uPal[vC],vT)*a,a);}`,
  glowF3:`#version 300 es
-precision highp float;in vec2 vL;flat in int vC;in float vA;uniform float uA;
+precision highp float;flat in int vC;flat in int vCp;in float vA;in float vT;in float vHf;in float vR;uniform float uA;uniform mat2 uMi;
 layout(location=0) out vec4 o0;layout(location=1) out vec4 o1;layout(location=2) out vec4 o2;
-void main(){float d=length(vL),fw=max(fwidth(d),1e-4),c=clamp((1.-d)/fw+.5,0.,1.);if(c<=0.)discard;float v=c*uA*vA;ivec4 k=ivec4(vC-4);
- o0=vec4(equal(k,ivec4(0,1,2,3)))*v;o1=vec4(equal(k,ivec4(4,5,6,7)))*v;o2=vec4(equal(k,ivec4(8,9,10,11)))*v;}`,
+void main(){vec2 vL=uMi*((gl_PointCoord*2.-1.)*vHf)/vR;float d=length(vL),fw=max(fwidth(d),1e-4),c=clamp((1.-d)/fw+.5,0.,1.);if(c<=0.)discard;float v=c*uA*vA;ivec4 k=ivec4(vC-4),kp=ivec4(vCp-4);
+ vec4 wa=vec4(vT*v),wp=vec4((1.-vT)*v);
+ o0=vec4(equal(k,ivec4(0,1,2,3)))*wa+vec4(equal(kp,ivec4(0,1,2,3)))*wp;o1=vec4(equal(k,ivec4(4,5,6,7)))*wa+vec4(equal(kp,ivec4(4,5,6,7)))*wp;o2=vec4(equal(k,ivec4(8,9,10,11)))*wa+vec4(equal(kp,ivec4(8,9,10,11)))*wp;}`,
  /* the ground itself: an invisible-but-solid surface built from the elevation grid (each vertex takes the lowest
     ground around it, so it never pokes up through the dots). It only adds haze with distance and, once the view is
     tipped well over, a faint light on slopes facing north-west. */
@@ -1977,7 +1995,7 @@ const GL={gl:null,lost:false,
   const sh=(t,s)=>{const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(o));return o};
   const pr=(v,f)=>{const p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHADER,v));gl.attachShader(p,sh(gl.FRAGMENT_SHADER,f));gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));
     const u={},n=gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);for(let i=0;i<n;i++){const a=gl.getActiveUniform(p,i);u[a.name.replace(/\[0\]$/,"")]=gl.getUniformLocation(p,a.name)}return{p,u}};
-  this.pDot=pr(GLSL.dotV,GLSL.dotF);this.pGlow=pr(GLSL.dotV,GLSL.glowF);this.pComp=pr(GLSL.fullV,GLSL.compF);this.pGrat=pr(GLSL.fullV,GLSL.gratF);
+  this.pDot=pr(GLSL.dotV,GLSL.dotF3);this.pGlow=pr(GLSL.dotV,GLSL.glowF3);this.pComp=pr(GLSL.fullV,GLSL.compF);this.pGrat=pr(GLSL.fullV,GLSL.gratF);
   this.pDot3=pr(GLSL.dotV3,GLSL.dotF3);this.pGlow3=pr(GLSL.dotV3,GLSL.glowF3);this.pTer=pr(GLSL.terV,GLSL.terF);this.pSky=pr(GLSL.skyV,GLSL.skyF);this.pGrat3=pr(GLSL.fullV,GLSL.gratF3);
   /* one ground patch: 33×33 vertices plus a skirt hanging from its edge to hide cracks between detail levels */
   {const N=32,v=[],ix=[];for(let j=0;j<=N;j++)for(let i=0;i<=N;i++)v.push(i,j,0);
@@ -1989,16 +2007,14 @@ const GL={gl:null,lost:false,
     this.tN=ix.length;gl.bindVertexArray(null)}
   this.ht=null;
   this.quad=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,this.quad);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
-  this.vEmpty=gl.createVertexArray();this.fb=null;this.fw=this.fh=0;this.rk=null},
+  this.vEmpty=gl.createVertexArray();this.pm=(gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE)||[1,64])[1];this.fb=null;this.fw=this.fh=0;this.rk=null},
  upload(d){const gl=this.gl,buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,d.buf,gl.STATIC_DRAW);
   const n=[d.n0,d.n1,d.n2],v=[null,null,null];let off=0;
-  for(let r=0;r<3;r++){if(n[r]){const a=gl.createVertexArray(),o=off*8;gl.bindVertexArray(a);
-    gl.bindBuffer(gl.ARRAY_BUFFER,this.quad);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
+  for(let r=0;r<3;r++){if(n[r]){const a=gl.createVertexArray(),o=off*12;gl.bindVertexArray(a);
     gl.bindBuffer(gl.ARRAY_BUFFER,buf);
-    gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,2,gl.UNSIGNED_SHORT,false,8,o);gl.vertexAttribDivisor(1,1);
-    gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,1,gl.SHORT,false,8,o+4);gl.vertexAttribDivisor(2,1);
-    gl.enableVertexAttribArray(3);gl.vertexAttribPointer(3,1,gl.UNSIGNED_BYTE,false,8,o+6);gl.vertexAttribDivisor(3,1);
-    gl.enableVertexAttribArray(4);gl.vertexAttribPointer(4,1,gl.UNSIGNED_BYTE,false,8,o+7);gl.vertexAttribDivisor(4,1);v[r]=a}off+=n[r]}
+    const at=(l,sz,ty,of)=>{gl.enableVertexAttribArray(l);gl.vertexAttribPointer(l,sz,ty,false,12,o+of)};
+    at(0,2,gl.UNSIGNED_SHORT,0);at(2,1,gl.SHORT,4);at(3,1,gl.UNSIGNED_BYTE,6);at(4,1,gl.UNSIGNED_BYTE,7);
+    at(5,1,gl.UNSIGNED_BYTE,8);at(6,1,gl.UNSIGNED_BYTE,9);at(7,1,gl.UNSIGNED_BYTE,10);at(8,1,gl.UNSIGNED_BYTE,11);v[r]=a}off+=n[r]}
   gl.bindVertexArray(null);return{gl:1,buf,v,n,hm:d.hm||0,bytes:d.buf.byteLength}},
  free(b){const gl=this.gl;if(!gl||this.lost)return;gl.deleteBuffer(b.buf);b.v.forEach(a=>a&&gl.deleteVertexArray(a));b.v=[null,null,null];b.n=[0,0,0]},
  /* palette from the current light ramp (+ land, park, water) */
@@ -2026,11 +2042,11 @@ const GL={gl:null,lost:false,
   for(const it of list){const t=it[3];let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const[cx,cy]of[[0,0],[t,0],[t,t],[0,t]]){const q=toS(m,it[1]+cx,it[2]+cy);x0=Math.min(x0,q[0]);x1=Math.max(x1,q[0]);y0=Math.min(y0,q[1]);y1=Math.max(y1,q[1])}
     y0-=it[0].hm*lift;it[6]=[x0-14,y0-14,x1+14,y1+14];it[7]=it[4]>.002&&x1>-14&&x0<W+14&&y1>-14&&y0<H+14}
   const use=P=>{const u=P.u;gl.useProgram(P.p);gl.uniform2f(u.uRes,W,H);gl.uniform1f(u.uDpr,DPR);gl.uniform1f(u.uLift,lift);if(u.uPal)gl.uniform3fv(u.uPal,this.P);
-    if(u.uEx){gl.uniform1f(u.uEx,EX());gl.uniform1f(u.uSl,smooth01((cam.tilt-.35)/.6))}};
-  const pass=(P,r)=>{const u=P.u;if(u.uGb)gl.uniform1f(u.uGb,r?0:GRL);for(const it of list){const b=it[0];if(!b.n[r]||!it[7])continue;const k=it[3]/(LT_N*LT_SP),o=toS(m,it[1],it[2]),cl=it[5];
-    gl.uniform2f(u.uO,o[0],o[1]);gl.uniformMatrix2fv(u.uM,false,[m.a*k,m.b*k,m.c*k,m.d*k]);gl.uniform1f(u.uA,it[4]);
+    gl.uniform1f(u.uLd,GLD);gl.uniform1f(u.uGrl,GRL);gl.uniform1f(u.uEx,EX());gl.uniform1f(u.uSl,smooth01((cam.tilt-.35)/.6));gl.uniform1f(u.uPs,P===this.pGlow?.5:1);gl.uniform1f(u.uPm,this.pm)};
+  const pass=(P,r)=>{const u=P.u;gl.uniform1f(u.uGp,r===1?1:0);for(const it of list){const b=it[0];if(!b.n[r]||!it[7])continue;const k=it[3]/(LT_N*LT_SP),o=toS(m,it[1],it[2]),cl=it[5];
+    gl.uniform2f(u.uO,o[0],o[1]);gl.uniformMatrix2fv(u.uM,false,[m.a*k,m.b*k,m.c*k,m.d*k]);{const dt=(m.a*m.d-m.b*m.c)*k;gl.uniformMatrix2fv(u.uMi,false,[m.d/dt,-m.b/dt,-m.c/dt,m.a/dt])}gl.uniform1f(u.uA,it[4]);gl.uniform1f(u.uZ,it[8]);gl.uniform1f(u.uTf,it[9]);gl.uniform1f(u.uBt,it[10]);
     if(cl)gl.uniform4f(u.uClip,cl[0],cl[1],cl[2],cl[3]);else gl.uniform4f(u.uClip,-1,-1,1e6,1e6);
-    gl.bindVertexArray(b.v[r]);gl.drawArraysInstanced(gl.TRIANGLE_STRIP,0,4,b.n[r])}};
+    gl.bindVertexArray(b.v[r]);gl.drawArrays(gl.POINTS,0,b.n[r])}};
   use(this.pDot);pass(this.pDot,0);
   /* glows only cover the cities, so the glow passes are scissored to the screen box of the tiles that have any */
   let bx0=1e9,by0=1e9,bx1=-1e9,by1=-1e9;
@@ -2073,12 +2089,13 @@ const GL={gl:null,lost:false,
   for(const it of list){const t=it[3],cx=it[1]+t/2-m.ex,cy=it[2]+t/2-m.ey;it[6]=cx*cx+cy*cy}list.sort((a,b)=>b[6]-a[6]);
   const near=m.nr,far=m.far,za=(far+near)/(far-near),zb=-2*far*near/(far-near);
   const use=P=>{const u=P.u;gl.useProgram(P.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform2f(u.uRes,W,H);gl.uniform1f(u.uDpr,DPR);gl.uniform1f(u.uZs,m.zs);gl.uniform1f(u.uF,m.F);gl.uniform1f(u.uNear,near);
-    gl.uniform1f(u.uBias,.006);gl.uniform1f(u.uJit,LT_SP*.8*smooth01((cam.tilt-.55)/.6));gl.uniform1f(u.uZa,za);gl.uniform1f(u.uZb,zb);gl.uniform3f(u.uFog,m.fs,m.fe,0);if(u.uPal)gl.uniform3fv(u.uPal,this.P);
-    if(u.uEx){gl.uniform1f(u.uEx,EX());gl.uniform1f(u.uSl,smooth01((cam.tilt-.35)/.6))}};
-  const pass=(P,r)=>{const u=P.u;if(u.uGb)gl.uniform1f(u.uGb,r?0:GRL);for(const it of list){const b=it[0];if(!b.n[r])continue;const k=it[3]/(LT_N*LT_SP),cl=it[5];
-    gl.uniform3f(u.uO,it[1],it[2],k);gl.uniform1f(u.uA,it[4]);
+    gl.uniform1f(u.uBias,.006);gl.uniform1f(u.uJit,.8*smooth01((cam.tilt-.55)/.6));gl.uniform1f(u.uZa,za);gl.uniform1f(u.uZb,zb);gl.uniform3f(u.uFog,m.fs,m.fe,0);if(u.uPal)gl.uniform3fv(u.uPal,this.P);
+    gl.uniform3f(u.uE,m.ex,m.ey,m.ez);gl.uniform1f(u.uD,m.D);gl.uniformMatrix2fv(u.uMi,false,[1,0,0,1]);gl.uniform1f(u.uPs,P===this.pGlow3?.5:1);gl.uniform1f(u.uPm,this.pm);gl.uniform1f(u.uKd,KD3);gl.uniform1f(u.uLb,LB3);gl.uniform1f(u.uSP,LT_SP);gl.uniform1f(u.uGrl,GRL);
+    gl.uniform1f(u.uEx,EX());gl.uniform1f(u.uSl,smooth01((cam.tilt-.35)/.6))};
+  const pass=(P,r)=>{const u=P.u;gl.uniform1f(u.uGp,r===1?1:0);for(const it of list){const b=it[0];if(!b.n[r])continue;const k=it[3]/(LT_N*LT_SP),cl=it[5];
+    gl.uniform3f(u.uO,it[1],it[2],k);gl.uniform1f(u.uA,it[4]);gl.uniform1f(u.uZ,it[8]);gl.uniform1f(u.uTf,it[9]);gl.uniform1f(u.uBt,it[10]);
     if(cl)gl.uniform4f(u.uClip,cl[0],cl[1],cl[2],cl[3]);else gl.uniform4f(u.uClip,-1,-1,1e6,1e6);
-    gl.bindVertexArray(b.v[r]);gl.drawArraysInstanced(gl.TRIANGLE_STRIP,0,4,b.n[r])}};
+    gl.bindVertexArray(b.v[r]);gl.drawArrays(gl.POINTS,0,b.n[r])}};
   gl.enable(gl.DEPTH_TEST);use(this.pDot3);if(this.skip!=="dots")pass(this.pDot3,0);
   if(this.skip!=="glow"&&list.some(it=>it[0].n[1])){this.fbo();gl.disable(gl.DEPTH_TEST);
     gl.bindFramebuffer(gl.FRAMEBUFFER,this.fb);gl.viewport(0,0,this.fw,this.fh);
@@ -2104,11 +2121,55 @@ function TILE_WORKER(){
   function inst(){const g=[],w=[],l=Array.from({length:16},()=>[]);return{
     g(x,y,h,r,c){g.push(x,y,h,r,c)},w(x,y,h,r,c){w.push(x,y,h,r,c)},l(x,y,h,r,c){l[c].push(x,y,h,r,c)},
     out(){let n2=0;for(const a of l)n2+=a.length/5;const n0=g.length/5,n1=w.length/5,n=n0+n1+n2;
-      const buf=new ArrayBuffer(n*8),u16=new Uint16Array(buf),i16=new Int16Array(buf),u8=new Uint8Array(buf);let k=0;
-      const put=a=>{for(let t=0;t<a.length;t+=5){u16[k*4]=Math.round(a[t]*128);u16[k*4+1]=Math.round(a[t+1]*128);i16[k*4+2]=Math.max(-32768,Math.min(32767,Math.round(a[t+2])));u8[k*8+6]=Math.min(255,Math.round(a[t+3]*32));u8[k*8+7]=a[t+4];k++}};
-      put(g);put(w);for(const a of l)put(a);let hm=0;for(let t=0;t<n;t++)hm=Math.max(hm,i16[t*4+2]);return{buf,n0,n1,n2,hm}}}}
+      const buf=new ArrayBuffer(n*12),u16=new Uint16Array(buf),i16=new Int16Array(buf),u8=new Uint8Array(buf);let k=0;
+      const put=a=>{for(let t=0;t<a.length;t+=5){u16[k*6]=Math.round(a[t]*128);u16[k*6+1]=Math.round(a[t+1]*128);i16[k*6+2]=Math.max(-32768,Math.min(32767,Math.round(a[t+2])));u8[k*12+6]=Math.min(255,Math.round(a[t+3]*32));u8[k*12+7]=a[t+4];
+        u8[k*12+8]=u8[k*12+6];u8[k*12+9]=a[t+4];k++}};
+      put(g);put(w);for(const a of l)put(a);let hm=0;for(let t=0;t<n;t++)hm=Math.max(hm,i16[t*6+2]);return{buf,n0,n1,n2,hm}}}}
+  /* 3D dots, nested: the grid is laid out so a tile holds every dot of its parent tile (one level coarser) plus three
+     new ones per parent cell. Each dot is stored with its birth level (the coarsest level it appears at), its own look
+     at this tile's detail and its look in the parent tile, so the GPU can grow the new dots in and blend the old ones
+     from one look to the other as you zoom, with nothing to swap. 12 bytes a dot:
+     x,y (tile px ×128, uint16) · height (m, int16) · size, colour · parent size, parent colour · birth level · jitter */
+  function genGL(z,i,j){const N=D.LT_N,SP=D.LT_SP,sz=.25*Math.pow(2,z),c=SP/sz,tw=N*c,x0=i*tw,y0=j*tw,KS=SP/4,E=D.E;
+    const cityIn=(zz,ii,jj)=>{if(zz<5)return false;const t2=N*SP/(.25*Math.pow(2,zz)),a0=ii*t2,b0=jj*t2;return D.city.some(q=>q[0]+q[2]>a0&&q[0]-q[2]<a0+t2&&q[1]+q[3]>b0&&q[1]-q[3]<b0+t2)};
+    const ctA=cityIn(z,i,j),ctP=z>0&&cityIn(z-1,i>>1,j>>1);
+    /* only the rivers, moats and parks that reach this tile are tested, dot by dot */
+    let WL=null,ML=null,PL2=null;if(ctA||ctP){const m=.2,X0=x0-m,Y0=y0-m,X1=x0+tw+m,Y1=y0+tw+m;
+      WL=D.waters.filter(q=>{let b=q.bb;if(!b){b=[1e9,1e9,-1e9,-1e9];for(const p of q.p){b[0]=Math.min(b[0],p[0]);b[1]=Math.min(b[1],p[1]);b[2]=Math.max(b[2],p[0]);b[3]=Math.max(b[3],p[1])}const h=q.w*.5;b[0]-=h;b[1]-=h;b[2]+=h;b[3]+=h;q.bb=b}return b[2]>X0&&b[0]<X1&&b[3]>Y0&&b[1]<Y1});
+      ML=D.moats.filter(q=>q[0]+q[2]>X0&&q[0]<X1&&q[1]+q[3]>Y0&&q[1]<Y1);PL2=D.parks.filter(q=>q.k!=="w"&&q.x+q.rx>X0&&q.x-q.rx<X1&&q.y+q.ry>Y0&&q.y-q.ry<Y1)}
+    const waterAt=(x,y)=>{for(const m of ML)if(x>m[0]-.12&&x<m[0]+m[2]+.12&&y>m[1]-.12&&y<m[1]+m[3]+.12&&!(x>m[0]&&x<m[0]+m[2]&&y>m[1]&&y<m[1]+m[3]))return true;
+      for(const w of WL){const b=w.bb;if(x<b[0]||x>b[2]||y<b[1]||y>b[3])continue;for(let i=1;i<w.p.length;i++)if(segDist(x,y,w.p[i-1],w.p[i])<w.w*.5)return true}return false};
+    const parkAt=(x,y)=>{for(const pk of PL2){const dx=(x-pk.x)/pk.rx,dy=(y-pk.y)/pk.ry;if(dx*dx+dy*dy<1)return true}for(const m of ML)if(x>m[0]&&x<m[0]+m[2]&&y>m[1]&&y<m[1]+m[3])return true;return false};
+    const br=C.bright,T=C.dots==="terrain"&&D.LC,cut=T?.42:.03,PK=19+17*4+2,SN=T&&C.snow&&D.SN;
+    /* one dot's look at detail level zz (dot spacing cz): o = [lit?, colour, size, glow size] */
+    const look=(o,wx,wy,zz,cz,city)=>{const sl=E?slopeAt(E,wx,wy,cz):null,sr=sl?Math.min(1,Math.hypot(sl[0],sl[1])/1.2)*255/32:0;o[3]=0;
+      if(city){if(waterAt(wx,wy)){o[0]=0;o[1]=18;o[2]=sr;return}if(parkAt(wx,wy)){o[0]=0;o[1]=T?PK:17;o[2]=sr;return}}
+      let v=popV(popAt(D.G,wx,wy,popLvl(cz)),br);
+      if(v<cut){o[0]=0;o[1]=16;o[2]=sr;
+        if(T){const k=lcAt(D.LC,wx,wy,cz,D.popCx,D.popSc);
+          if(k>=2){const sh=lcShade(sl,hn(Math.floor(wx*733)|0,Math.floor(wy*739)|0));let q=19+(k-2)*4+sh;
+            if(SN){const p=snowAt(SN,wx,wy,D.popCx,D.popSc);if(p>.06&&hn(Math.floor(wx*523)|0,Math.floor(wy*521)|0)<(p-.06)/.88)q=135+sh}o[1]=q}}return}
+      v=Math.min(1,v);o[0]=1;o[1]=Math.min(15,v*16|0);let r=(.6+1.25*v)*KS;
+      if(zz>=5)r*=.74+.52*vnoise(wx/.35+3.1,wy/.35+1.7);   /* texture inside a 1 km cell: size only, the colour stays true */
+      o[2]=r;if(v>.45&&C.glow)o[3]=r*2.7};
+    const ctz=x=>{if(!x)return 99;let n=0;while(!(x&1)){x>>=1;n++}return n};
+    const g=[],w=[],l=Array.from({length:16},()=>[]),A=[0,0,0,0],Pq=[0,0,0,0];let any=false;
+    for(let a=0;a<N;a++)for(let b=0;b<N;b++){
+      const wx=x0+a*c,wy=y0+b*c;if(!isLand(wx,wy))continue;any=true;
+      const X=i*N+a,Y=j*N+b,B=Math.max(0,z-Math.min(ctz(X),ctz(Y))),h=E?elevAt(E,wx,wy,0):0;
+      look(A,wx,wy,z,c,ctA);if(B<z)look(Pq,wx,wy,z-1,c*2,ctP);else{Pq[0]=A[0];Pq[1]=A[1];Pq[2]=A[2];Pq[3]=A[3]}
+      const jh=Math.floor(hn((X>>(z-B))*7+B,(Y>>(z-B))*13-B)*256)&255,px=a*SP,py=b*SP;
+      (A[0]?l[A[1]]:g).push(px,py,h,A[2],A[1],Pq[2],Pq[1],B,jh);
+      if(A[3]||Pq[3])w.push(px,py,h,A[3],A[0]?A[1]:Pq[1],Pq[3],Pq[0]?Pq[1]:A[1],B,jh)}
+    if(!any)return null;
+    let n2=0;for(const q of l)n2+=q.length/9;const n0=g.length/9,n1=w.length/9,n=n0+n1+n2;
+    const buf=new ArrayBuffer(n*12),u16=new Uint16Array(buf),i16=new Int16Array(buf),u8=new Uint8Array(buf);let k=0,hm=0;
+    const put=q=>{for(let t=0;t<q.length;t+=9){const o=k*12;u16[k*6]=Math.round(q[t]*128);u16[k*6+1]=Math.round(q[t+1]*128);const hh=Math.max(-32768,Math.min(32767,Math.round(q[t+2])));i16[k*6+2]=hh;if(hh>hm)hm=hh;
+      u8[o+6]=Math.min(255,Math.round(q[t+3]*32));u8[o+7]=q[t+4];u8[o+8]=Math.min(255,Math.round(q[t+5]*32));u8[o+9]=q[t+6];u8[o+10]=q[t+7];u8[o+11]=q[t+8];k++}};
+    put(g);put(w);for(const q of l)put(q);return{buf,n0,n1,n2,hm}}
   function gen(z,i,j){const N=D.LT_N,SP=D.LT_SP;
     const sz=.25*Math.pow(2,z),c=SP/sz,tw=N*c,x0=i*tw,y0=j*tw,hi=z>=5;
+    if(D.G&&C.gl)return genGL(z,i,j);
     if(D.G)return genPop(z,i,j,N,SP,c,tw,x0,y0,hi);
     const h2=(c*.5)**2*2;
     const list=D.src.filter(o=>o.x+o.R+c>x0&&o.x-o.R-c<x0+tw&&o.y+o.R+c>y0&&o.y-o.R-c<y0+tw).map(o=>{const k=o.k+h2,R=Math.sqrt(k/2)*3.2;return{x:o.x,y:o.y,k,R2:R*R,pk:o.pk*o.k/k}});
@@ -2121,14 +2182,14 @@ function TILE_WORKER(){
     for(let a=0;a<N;a++)for(let b=0;b<N;b++){
       const wx=x0+(a+.5)*c,wy=y0+(b+.5)*c;if(!isLand(wx,wy))continue;any=true;
       const px=(a+.5)*SP,py=(b+.5)*SP,h=E?elevAt(E,wx,wy,0):0;
-      if(cityT){if(waterAt(wx,wy)){if(I)I.g(px,py,h,0,18);else{water.moveTo(px+1.1,py);water.arc(px,py,1.1,0,6.283)}continue}if(parkAt(wx,wy)){if(I)I.g(px,py,h,0,17);else{park.moveTo(px+1.1,py);park.arc(px,py,1.1,0,6.283)}continue}}
+      if(cityT){if(waterAt(wx,wy)){if(I)I.g(px,py,h,0,18);else{water.moveTo(px+rl*.83,py);water.arc(px,py,rl*.83,0,6.283)}continue}if(parkAt(wx,wy)){if(I)I.g(px,py,h,0,17);else{park.moveTo(px+rl*.83,py);park.arc(px,py,rl*.83,0,6.283)}continue}}
       let mf=1;for(const m of mt){const dx=(wx-m.x)/m.rx,dy=(wy-m.y)/m.ry,d=dx*dx+dy*dy;if(d<1)mf*=1-.85*m.w*(1-d)}
       let Dn=22*mf;for(const o of list){const dx=wx-o.x,dy=wy-o.y,d2=dx*dx+dy*dy;if(d2<o.R2)Dn+=o.pk*Math.exp(-d2/o.k)}
       if(z>=6){const ns=Math.max(c*2.2,.28),nb=vnoise(wx/ns+3.1,wy/ns+1.7);Dn*=.3+1.4*nb*Math.sqrt(nb)}else Dn*=(.45+1.1*vnoise(wx/(c*2.6)+z*13.1,wy/(c*2.6)+z*7.7))*(z<=1?9:z<=3?4:z<=4?2:1);
       for(const[a2,b2]of roads){const d=segDist(wx,wy,a2,b2);if(d<.2)Dn+=5000*Math.exp(-d*d/.006)}
       const v=Math.pow(clamp((Math.log10(Dn*br+1)-2.0)/2.7,0,1),1.5);
       if(v<.05){if(I)I.g(px,py,h,0,16);else{land.moveTo(px+rl,py);land.arc(px,py,rl,0,6.283)}continue}
-      const q=Math.min(15,v*16|0),r=.6+1.25*v;if(I)I.l(px,py,h,r,q);else{lit[q].moveTo(px+r,py);lit[q].arc(px,py,r,0,6.283)}
+      const q=Math.min(15,v*16|0),r=(.6+1.25*v)*SP/4;if(I)I.l(px,py,h,r,q);else{lit[q].moveTo(px+r,py);lit[q].arc(px,py,r,0,6.283)}
       if(v>.38){const gr=r*2.7;if(I){if(C.glow)I.w(px,py,h,gr,q)}else{glow[q].moveTo(px+gr,py);glow[q].arc(px,py,gr,0,6.283)}}}
     if(!any)return null;if(I)return I.out();
     const dev=Math.round(N*SP*C.dpr),oc=new OffscreenCanvas(dev,dev),x=oc.getContext("2d");x.scale(C.dpr,C.dpr);
@@ -2151,7 +2212,7 @@ function TILE_WORKER(){
       /* every dot stands at the true height of its own spot (not an area average), so it sits on the same surface the
          ground is built from at any detail level; 3D ground dots pass their slope in place of a size */
       const px=(a+.5)*SP,py=(b+.5)*SP,h=E?elevAt(E,wx,wy,0):0,sl=D.E?slopeAt(D.E,wx,wy,c):null,sr=I&&sl?Math.min(1,Math.hypot(sl[0],sl[1])/1.2)*255/32:0;
-      if(cityT){if(waterAt(wx,wy)){if(I)I.g(px,py,h,sr,18);else{water.moveTo(px+1.1,py);water.arc(px,py,1.1,0,6.283)}continue}if(parkAt(wx,wy)){if(T)tdot(PK,px,py,h,1.1,sr);else if(I)I.g(px,py,h,sr,17);else{park.moveTo(px+1.1,py);park.arc(px,py,1.1,0,6.283)}continue}}
+      if(cityT){if(waterAt(wx,wy)){if(I)I.g(px,py,h,sr,18);else{water.moveTo(px+rl*.83,py);water.arc(px,py,rl*.83,0,6.283)}continue}if(parkAt(wx,wy)){if(T)tdot(PK,px,py,h,rl*.83,sr);else if(I)I.g(px,py,h,sr,17);else{park.moveTo(px+rl*.83,py);park.arc(px,py,rl*.83,0,6.283)}continue}}
       let v=popV(popAt(D.G,wx,wy,lvl),br);
       if(v<cut){if(T){const k=lcAt(D.LC,wx,wy,c,D.popCx,D.popSc);
           if(k>=2){const sh=lcShade(sl,hn(Math.floor(wx*733)|0,Math.floor(wy*739)|0));let q=19+(k-2)*4+sh;
@@ -2160,7 +2221,7 @@ function TILE_WORKER(){
             if(SN){const p=snowAt(SN,wx,wy,D.popCx,D.popSc);if(p>.06&&hn(Math.floor(wx*523)|0,Math.floor(wy*521)|0)<(p-.06)/.88)q=135+sh}
             tdot(q,px,py,h,rl,sr);continue}}
         if(I)I.g(px,py,h,sr,16);else{land.moveTo(px+rl,py);land.arc(px,py,rl,0,6.283)}continue}
-      v=Math.min(1,v);const q=Math.min(15,v*16|0);let r=.6+1.25*v;
+      v=Math.min(1,v);const q=Math.min(15,v*16|0);let r=(.6+1.25*v)*SP/4;
       if(z>=5)r*=.74+.52*vnoise(wx/.35+3.1,wy/.35+1.7);   /* texture inside a 1 km cell: size only, the colour stays true */
       if(I)I.l(px,py,h,r,q);else{lit[q].moveTo(px+r,py);lit[q].arc(px,py,r,0,6.283)}
       if(v>.45){const gr=r*2.7;if(I){if(C.glow)I.w(px,py,h,gr,q)}else{glow[q].moveTo(px+gr,py);glow[q].arc(px,py,gr,0,6.283)}}}
@@ -2222,13 +2283,31 @@ const tileW=z=>LT_N*LT_SP/(.25*Math.pow(2,z));
 const smooth01=t=>{t=clamp(t,0,1);return t*t*(3-2*t)};
 /* stand-in from the nearest coarser (or finer) tile already in memory, so nothing is ever blank */
 function tileFallback(z,i,j,tw){
-  const st=STALE.get(z+","+i+","+j);if(st){if(st.b){if(GLON)GQ.push([st.b,i*tw,j*tw,tw,TOP,null]);else{ctx.globalAlpha=TOP;ctx.drawImage(st.b,i*tw,j*tw,tw,tw)}}return}
+  const st=STALE.get(z+","+i+","+j);if(st){if(st.b){if(GLON)GQ.push([st.b,i*tw,j*tw,tw,TOP,null,0,0,z,1,99]);else{ctx.globalAlpha=TOP;ctx.drawImage(st.b,i*tw,j*tw,tw,tw)}}return}
   for(let dz=1;dz<=z;dz++){const f=1<<dz,ii=Math.floor(i/f),jj=Math.floor(j/f),t=TL.get((z-dz)+","+ii+","+jj);if(!t)continue;if(!t.b)return;
     /* 3D: draw only the coarse tile's dots that fall inside this square */
-    if(GLON){const S=LT_N*LT_SP/f,u=(i-ii*f)*S,v=(j-jj*f)*S;GQ.push([t.b,ii*tw*f,jj*tw*f,tw*f,TOP,[u,v,u+S,v+S]]);return}
+    if(GLON){const S=LT_N*LT_SP/f,u=(i-ii*f)*S,v=(j-jj*f)*S;GQ.push([t.b,ii*tw*f,jj*tw*f,tw*f,TOP,[u,v,u+S,v+S],0,0,z-dz,1,99]);return}
     const pw=t.b.width/f;ctx.globalAlpha=TOP;ctx.drawImage(t.b,(i-ii*f)*pw,(j-jj*f)*pw,pw,pw,i*tw,j*tw,tw,tw);return}
-  if(z<10){const h=tw/2;for(let a=0;a<2;a++)for(let b=0;b<2;b++){const t=TL.get((z+1)+","+(2*i+a)+","+(2*j+b));if(t&&t.b){if(GLON)GQ.push([t.b,i*tw+a*h,j*tw+b*h,h,TOP,null]);else{ctx.globalAlpha=TOP;ctx.drawImage(t.b,i*tw+a*h,j*tw+b*h,h,h)}}}}}
+  if(z<10){const h=tw/2;for(let a=0;a<2;a++)for(let b=0;b<2;b++){const t=TL.get((z+1)+","+(2*i+a)+","+(2*j+b));if(t&&t.b){if(GLON)GQ.push([t.b,i*tw+a*h,j*tw+b*h,h,TOP,null,0,0,z+1,1,99]);else{ctx.globalAlpha=TOP;ctx.drawImage(t.b,i*tw+a*h,j*tw+b*h,h,h)}}}}}
 let TOP=1;
+/* 3D dots: a tile holds every dot of the coarser tiles above it, so when it arrives only the dots that weren't already
+   on screen fade in (from the level below whatever stood in for it); the rest are the very same dots, so nothing flickers */
+let GLD=0,KD3=0,LB3=0;
+/* GPU budget: if a view would send too many dots to the GPU (a long, low view toward the horizon), the detail of the
+   whole view eases down a little (and back up once there is room), smoothly, so the frame rate holds without a pop */
+/* (each dot is one point sprite, so a million is about the vertex load the old 4-corner dots had at their busiest) */
+let LB=0,LBT=0,LBt=0;const DOT_HI=1e6,DOT_LO=.7e6,TPX2=(LT_N*LT_SP)**2;
+function lodBudget(now,nt){let n=0;for(const it of GQ){const b=it[0],cl=it[5];if(b&&b.n)n+=(b.n[0]+b.n[1]+b.n[2])*(cl?(cl[2]-cl[0])*(cl[3]-cl[1])/TPX2:1)}
+  if(n>DOT_HI||nt>150)LBT=Math.max(-1.6,LBT-.08);else if(n<DOT_LO&&nt<120&&LBT<0)LBT=Math.min(0,LBT+.03);
+  const dt=Math.min(64,now-(LBt||now));LBt=now;LB+=(LBT-LB)*(1-Math.exp(-dt/240));if(Math.abs(LBT-LB)<.004)LB=LBT;
+  return LB!==LBT}
+function fadeBase(z,i,j,k){if(STALE.has(k))return 0;
+  for(let dz=1;dz<=z;dz++){const t=TL.get((z-dz)+","+(i>>dz)+","+(j>>dz));if(t)return t.b?z-dz+1:0}
+  if(z<10){for(let a=0;a<2;a++)for(let b=0;b<2;b++)if(!TL.has((z+1)+","+(2*i+a)+","+(2*j+b)))return 0;return 99}
+  return 0}
+function pushTile(t,k,z,i,j,tw,now,op){const a=smooth01((now-t.born)/260);
+  if(a<1){if(t.bt===undefined)t.bt=fadeBase(z,i,j,k);if(!t.bt&&STALE.has(k))tileFallback(z,i,j,tw)}
+  GQ.push([t.b,i*tw,j*tw,tw,op,null,0,0,z,a<1?a:1,a<1?t.bt:99]);return a<1}
 let BASE_OK=false,curZ=-1,prevZ=-1,zT0=0;
 function drawTilesM(vx0,vy0,vx1,vy1,now,fast,op=1,base=null){initTileWorkers();more=false;GQ.length=0;
   /* 3D: the range was stretched below the screen for raised ground; keep only the extra tiles whose own region's
@@ -2249,6 +2328,7 @@ function drawTilesM(vx0,vy0,vx1,vy1,now,fast,op=1,base=null){initTileWorkers();m
       const k=z+","+i+","+j,t=TL.get(k);
       if(!t){wish(z,i,j,pri+d);if(alpha===1)tileFallback(z,i,j,tw);continue}
       TL.delete(k);TL.set(k,t);if(!t.b)continue;
+      if(GLON){if(pushTile(t,k,z,i,j,tw,now,op))fading=true;continue}
       const a=smooth01((now-t.born)/260);if(a<1){fading=true;if(alpha===1)tileFallback(z,i,j,tw)}
       if(GLON)GQ.push([t.b,i*tw,j*tw,tw,op*alpha*a,null]);else{ctx.globalAlpha=op*alpha*a;ctx.drawImage(t.b,i*tw,j*tw,tw,tw)}}
     ctx.globalAlpha=1};
@@ -2256,18 +2336,21 @@ function drawTilesM(vx0,vy0,vx1,vy1,now,fast,op=1,base=null){initTileWorkers();m
     if(B&&!(i>=B[0]&&i<=B[1]&&j>=B[2]&&j<=B[3])&&!tileUp(i,j,tw))continue;if(!TL.has(z+","+i+","+j))return false}return true};
   /* one detail level on screen at a time. Crossing into the next level (with a little hysteresis so it
      doesn't flicker at the boundary) cross-fades old into new over a quarter second, once the new tiles are in. */
+  GLD=clamp(Lr+(GLON?LB:0),-2,11);
+  if(GLON){const tz=clamp(Math.floor(GLD+.45),0,10);prevZ=-1;curZ=tz;level(tz,1,0,true);
+    const zn=clamp(tz+(zoomDir>=0?1:-1),0,10);if(zn!==tz)level(zn,0,25,false)}else{
   const tz=Math.round(L);
   if(curZ<0)curZ=tz;
   else if(tz!==curZ&&Math.abs(L-curZ)>.56){if(ready(tz)||Math.abs(L-curZ)>1.4){prevZ=curZ;curZ=tz;zT0=now}else level(tz,0,0,false)}
   const xa=prevZ>=0?smooth01((now-zT0)/240):1;if(xa>=1)prevZ=-1;
   if(prevZ>=0&&prevZ!==curZ){level(prevZ,1-xa,4,true);level(curZ,xa,0,true);fading=true}else level(curZ,1,0,true);
   /* look one level ahead in the direction you are zooming */
-  const zn=clamp(curZ+(zoomDir>=0?1:-1),0,10);if(zn!==curZ)level(zn,0,25,false);
+  const zn=clamp(curZ+(zoomDir>=0?1:-1),0,10);if(zn!==curZ)level(zn,0,25,false)}
   /* a coarse copy of the whole country, kept as a backstop under everything */
   if(!BASE_OK&&WISH.length<4){let all=true;for(const zb of[0]){const tw=tileW(zb);for(let i=Math.floor(MX0/tw);i<=Math.floor((MX0+MW/MR)/tw);i++)for(let j=Math.floor(MY0/tw);j<=Math.floor((MY0+MH/MR)/tw);j++){const k=zb+","+i+","+j;if(!TL.has(k)){all=false;wish(zb,i,j,1e4+zb)}}}if(all)BASE_OK=true}
-  if(GLON)GL.draw(GQ);
+  let easing=false;if(GLON){easing=lodBudget(now,0);GL.draw(GQ)}
   pump(fast);
-  return fading||more}
+  return fading||more||easing}
 
 /* ---- 3D camera: ground grid, frustum, tile choice, and what the hills hide ---- */
 /* elevation grid geometry: native cell (gx, gy) → world */
@@ -2318,25 +2401,25 @@ function chunks(m,N,tgt,L0){const out=[],zs=m.zs,cw=Math.max(GEO.dx,GEO.dy);
 const HMC=new Map();
 function tileHm(z,i,j,tw){const k=z+","+i+","+j;let v=HMC.get(k);if(v===undefined){v=regionMaxM(i*tw,j*tw,(i+1)*tw,(j+1)*tw);HMC.set(k,v)}return v}
 let P3N=0,Z3=-9;
-function drawTilesP(m,now,fast,op){initTileWorkers();more=false;GQ.length=0;TOP=op;let fading=false;const lv=[];
+function drawTilesP(m,now,fast,op){initTileWorkers();more=false;GQ.length=0;TOP=op;let fading=false;const lv=[],pre=[];
   /* looking nearly straight down, every tile takes the detail of the screen centre (as the flat map does), so there is no
      seam between detail levels; tipping the view over hands the choice to each tile's own distance */
-  const kd=smooth01((cam.tilt-.35)/.55);
-  /* the overall detail level only steps once you are well past the halfway point, so it doesn't flicker on the boundary */
-  const Lc=Math.log2(m.F/(m.D*.25));if(!(Math.abs(Lc-Z3)<=.56))Z3=Math.round(Lc);const sh=Z3-Lc;
-  const sel=b=>{lv.length=0;const visit=(z,i,j)=>{const tw=tileW(z),x0=i*tw,y0=j*tw,x1=x0+tw,y1=y0+tw,mg=tw*.02,hm=tileHm(z,i,j,tw)*m.zs+.01;
+  const kd=smooth01((cam.tilt-.35)/.55);KD3=kd;
+  /* a tile is fetched as soon as any of its own dots could start to grow in (the shader grows each dot in by its own
+     distance, from the same rule), and the next level is fetched a little ahead of that */
+  const sel=b=>{lv.length=pre.length=0;const visit=(z,i,j)=>{const tw=tileW(z),x0=i*tw,y0=j*tw,x1=x0+tw,y1=y0+tw,mg=tw*.02,hm=tileHm(z,i,j,tw)*m.zs+.01;
       if(!boxIn(m,x0-mg,y0-mg,0,x1+mg,y1+mg,hm))return;const d=Math.max(boxDist(m,x0,y0,0,x1,y1,hm),m.nr);if(d>m.fe*1.05)return;
-      const dl=m.D+(d-m.D)*kd,g=kd?Math.sqrt(clamp((m.ez-hm*.5)/dl,.2,1))**kd:1,need=clamp(Math.round(Math.log2(m.F*g/(dl*.25))+sh+b),0,10);
-      if(z<need){for(let a=0;a<2;a++)for(let c=0;c<2;c++)visit(z+1,2*i+a,2*j+c);return}lv.push([z,i,j,d])};
+      const dl=m.D+(d-m.D)*kd,g=kd?Math.sqrt(clamp(m.ez/dl,.2,1))**kd:1,Lt=Math.log2(m.F*g/(dl*.25))+b,need=clamp(Math.floor(Lt+.45),0,10);
+      if(z<need){for(let a=0;a<2;a++)for(let c=0;c<2;c++)visit(z+1,2*i+a,2*j+c);return}lv.push([z,i,j,d]);if(z<10&&Lt+.8>=z+1)pre.push([z,i,j,d])};
     const tw=tileW(0);for(let i=Math.floor(-200/tw);i<=Math.floor(1550/tw);i++)for(let j=0;j<=Math.floor(1750/tw);j++)visit(0,i,j)};
-  sel(0);if(lv.length>160){sel(-.6);if(lv.length>160)sel(-1.2)}P3N=lv.length;
+  let bb=LB;sel(bb);if(lv.length>170){bb-=.6;sel(bb);if(lv.length>170){bb-=.6;sel(bb)}}P3N=lv.length;LB3=bb;
   for(const[z,i,j,d]of lv){const tw=tileW(z),k=z+","+i+","+j,t=TL.get(k);
     if(!t){wish(z,i,j,d/m.D);tileFallback(z,i,j,tw);continue}
-    TL.delete(k);TL.set(k,t);if(!t.b)continue;
-    const a=smooth01((now-t.born)/260);if(a<1){fading=true;tileFallback(z,i,j,tw)}
-    GQ.push([t.b,i*tw,j*tw,tw,op*a,null])}
+    TL.delete(k);TL.set(k,t);if(!t.b)continue;if(pushTile(t,k,z,i,j,tw,now,op))fading=true}
+  if(WISH.length<6)for(const[z,i,j,d]of pre)for(let a=0;a<2;a++)for(let c=0;c<2;c++)wish(z+1,2*i+a,2*j+c,30+d/m.D);
   if(!BASE_OK&&WISH.length<4){let all=true;const tw=tileW(0);for(let i=Math.floor(MX0/tw);i<=Math.floor((MX0+MW/MR)/tw);i++)for(let j=Math.floor(MY0/tw);j<=Math.floor((MY0+MH/MR)/tw);j++){const k="0,"+i+","+j;if(!TL.has(k)){all=false;wish(0,i,j,1e4)}}if(all)BASE_OK=true}
-  GL.draw3(GQ,m);pump(fast);return fading||more}
+  const easing=lodBudget(now,lv.length);
+  GL.draw3(GQ,m);pump(fast);return fading||more||easing}
 /* what the hills hide, for the lines, trains and labels drawn on the canvases above the dots: the same low ground
    surface, rasterised coarsely (one depth per 4×4 px) on the CPU whenever the camera moves */
 const OB={key:"",on:false,bw:0,bh:0,z:null,t:0,dirty:false},OBS=6;
@@ -2382,8 +2465,8 @@ function drawTrains(now){
   const dot=(x,y,col,r,dx,dy,side)=>{const L=Math.hypot(dx,dy)||1;const ox=-dy/L*side,oy=dx/L*side;x+=ox;y+=oy;if(out(x,y))return;
     if(SET.glow){ctx.globalAlpha=.28;ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,r*2.6,0,6.283);ctx.fill();ctx.globalAlpha=1}
     ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,r,0,6.283);ctx.fill();ctx.fillStyle="rgba(255,255,255,.85)";ctx.beginPath();ctx.arc(x,y,r*.45,0,6.283);ctx.fill()};
-  if(s<14){const na=1-fade(s,8,14);ctx.globalAlpha=1;
-    for(const T of NTRAINS){if(SET.hide[T.e.type])continue;for(let k=0;k<T.n;k++){let tt=(t+k/T.n*T.C)%T.C,fw=tt*T.sp<T.e.len,d=fw?tt*T.sp:2*T.e.len-tt*T.sp;
+  {const nr=1-.5*(SET.lines?fade(s,9,16):0);ctx.globalAlpha=1;
+    for(const T of NTRAINS){if(SET.hide[T.e.type])continue;const na=T.e.type==="rail"?nr:1;for(let k=0;k<T.n;k++){let tt=(t+k/T.n*T.C)%T.C,fw=tt*T.sp<T.e.len,d=fw?tt*T.sp:2*T.e.len-tt*T.sp;
       const[wx,wy,ang,wh,tun]=along(T.e.pts,d);const q=prj(wx,wy,wh,Math.cos(ang),Math.sin(ang),tun);if(!q)continue;
       ctx.globalAlpha=na*(tun?.3:1);dot(q[0],q[1],T.col,T.sp>2?2:1.5,q[2],q[3],fw?1.6:-1.6);ctx.globalAlpha=1}}}
   const la=fade(s,2.4,4.5);if(la<=0)return;const r=clamp(s*.18,1.4,3.2);
@@ -2423,7 +2506,7 @@ function railPath(p,Ls,V,sf,tn,pil,por,smooth){
     pv=q;px=x;py=y}}
 /* 3D: every vertex through the perspective camera; the line breaks where it passes behind a hill or the eye.
    Tunnels are tested at the ground above them, so a tunnel shows (faintly) wherever its hillside can be seen. */
-function railPath3(p,Ls,m,sf,tn,pil,por,smooth){const far=m.D*40,lv=smooth?null:railLv(p),n=p.length;
+function railPath3(p,Ls,m,sf,tn,pil,por,smooth){const far=Math.min(m.D*40,m.fe*.6),lv=smooth?null:railLv(p),n=p.length;
   const pr=q=>{const h=q[2]||0,g=q[3];const vx=q[0]-m.ex,vy=q[1]-m.ey,vz=h*m.zs-m.ez,w=vx*m.fx+vy*m.fy+vz*m.fz;if(w<m.nr||w>far)return null;
     const k=m.F/w,x=W/2+k*(vx*m.rx+vy*m.ry),y=H/2-k*(vx*m.ux+vy*m.uy+vz*m.uz);
     if(g!==undefined&&g-h>25){const t=p3s(m,q[0],q[1],g*m.zs);if(occ(t[0],t[1],PZ))return null}else if(occ(x,y,w))return null;return[x,y,w]};
@@ -2448,7 +2531,14 @@ let GQ8=null,GHV=0;
 function groundLoad(){new Response(new Blob([elevBytes()]).stream().pipeThrough(new DecompressionStream("deflate"))).arrayBuffer().then(buf=>{
   const res=new Uint8Array(buf),Wd=ELEVM.W,Hd=ELEVM.H,q=new Uint8Array(Wd*Hd);if(res.length!==Wd*Hd)return;
   for(let y=0;y<Hd;y++)for(let x=0;x<Wd;x++){const i=y*Wd+x,a=x?q[i-1]:0,b=y?q[i-Wd]:0,c=x&&y?q[i-Wd-1]:0,p=a+b-c,pa=Math.abs(p-a),pb=Math.abs(p-b),pc=Math.abs(p-c);q[i]=(res[i]+(pa<=pb&&pa<=pc?a:pb<=pc?b:c))&255}
-  GQ8=q;GHV++;labelsDue=true;invalidate()}).catch(()=>{})}
+  GQ8=q;GHV++;drapeRoads();labelsDue=true;invalidate()}).catch(()=>{})}
+/* roads and trails only have their end points surveyed, so once the terrain is in they are laid along the ground every
+   ~150 m. Their heights are in metres like the track's, so they rise and fall with the terrain multiplier. */
+function drapeRoads(){for(const e of EDGES){if(e.type!=="road"&&e.type!=="trail")continue;const p=e._p0||(e._p0=e.pts.map(q=>q.slice())),out=[];
+    for(let i=1;i<p.length;i++){const a=p[i-1],b=p[i],n=Math.max(1,Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/.14));
+      for(let k=i>1?1:0;k<=n;k++){const t=k/n,x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t,h=gh(x,y);out.push([x,y,h,h])}}
+    const P2=e.pts;P2.length=0;for(const q of out)P2.push(q);delete P2._lv;delete P2._bb;delete P2._c}
+  if(routeSel&&RI[routeSel.id])buildRouteSel(RI[routeSel.id])}
 function gh(x,y){if(!GQ8)return 0;const M=ELEVM,fx=(x/(COSL*SCALE)+129-M.LON0)/M.STEP-.5,fy=(M.LAT0-46+y/SCALE)/M.STEP-.5,x0=Math.floor(fx),y0=Math.floor(fy),tx=fx-x0,ty=fy-y0;let v=0;
   for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++){const X=x0+dx,Y=y0+dy;if(X<0||Y<0||X>=M.W||Y>=M.H)continue;const k=GQ8[Y*M.W+X]/255;v+=(dx?tx:1-tx)*(dy?ty:1-ty)*k*k*M.HMAX}return v}
 function ptH(o,x,y){if(o._ghv!==GHV){o._gh=gh(x,y);o._ghv=GHV}return o._gh}
@@ -2481,11 +2571,12 @@ function drawWorldM(now,fast){
   /* everything below is drawn in screen space: each track vertex is projected with its own height */
   ctx.setTransform(DPR,0,0,DPR,0,0);ctx.lineCap="round";ctx.lineJoin="round";LPv=liftPM();const V={a:m.a,b:m.b,c:m.c,d:m.d,e:m.e,f:m.f,lp:LPv,P3:m.P3?m:null},Ls=lodFor(s);
   /* national network: each mode has its own line style (see TM / tstyle and the map key) */
-  const na=1-fade(s,9,16);
+  /* the national network stays at every zoom; only plain rail steps back (to half) where the city lines take over */
+  const na=1,nr=1-.5*(SET.lines?fade(s,9,16):0);
   if(na>0){const wn=clamp(.7+s*.45,.75,1.1);
     for(const t of["ferry","trail","bridge","road","rail","shin"]){if(SET.hide[t])continue;const sf=new Path2D(),tn=new Path2D(),pil=[],por=[];
       for(const e of EDGES){if(e.type!==t)continue;const sl=railOn(e.pts,V,40);if(!sl)continue;railPath(e.pts,V.P3?lodFor(sl):Ls,V,sf,tn,pil,por,SMOOTH[t])}
-      drawRail(t,wn,null,sf,tn,pil,por,na)}}
+      drawRail(t,wn,null,sf,tn,pil,por,t==="rail"?nr:na)}}
   /* the chosen route: a glowing band in the route colour, with the real mode drawn inside it */
   if(routeSel){const rc=routeSel.col;
     routeSel.legs.forEach(L=>{const sl=railOn(L.pts,V,40);if(!sl)return;const sf=new Path2D(),tn=new Path2D(),pil=[],por=[];railPath(L.pts,V.P3?lodFor(sl):Ls,V,sf,tn,pil,por,SMOOTH[L.net]);
@@ -2636,7 +2727,7 @@ function paintKey(){const kp=$("#keyp");if(!kp||kp.hidden)return;
     <h4>Between cities</h4>${["shin","rail","road","ferry","bridge","trail"].map(row).join("")}${fix("fly","Flight","Shown only when a route flies")}
     <h4>In the city · zoom in</h4>${["sub","jr","pr"].map(row).join("")}
     <h4>On the map</h4>${fix("st1","Station","One line stops here")}${fix("st2","Interchange","Change between lines here")}${fix("train","Moving train","Real trains, sped up 60×")}${fix("route","Your route","Pick one in Routes; icons show how each leg travels")}${fix("tun","Tunnel","Estimated from the terrain; trains dim inside")}${fix("via","Viaduct","Estimated; pillars show when the map is tilted")}
-    <p class="kfoot">Long-distance lines fade as you zoom into a city, and each city line keeps its real colour.${real?`<br>Population: <a href="https://www.worldpop.org" target="_blank" rel="noopener">WorldPop</a> 2020, 1 km grid (CC BY 4.0).`:""}<br>Land cover: High-Resolution Land-Use and Land-Cover Map of Japan 2024, v26.03 (<a href="https://pen.envr.tsukuba.ac.jp/~utlulc/" target="_blank" rel="noopener">University of Tsukuba</a>), 100 m, summarised to ~450 m.<br>Snow: NOAA/NESDIS IMS daily snow and ice analysis, 4 km (<a href="https://nsidc.org/data/g02156/versions/1" target="_blank" rel="noopener">NSIDC G02156</a>), Nov 4 &amp; 11 of 2005–2020, placed by elevation.<br>Terrain: USGS GMTED2010, 1 km mean elevation. Coastline &amp; lakes: Global Map Japan (GSI).<br>Railways: 「国土数値情報（鉄道データ）」（国土交通省）を加工して作成 · MLIT National Land Numerical Information, railway data 2024 (CC BY 4.0), processed. Tunnels and viaducts are estimated.</p>`;
+    <p class="kfoot">Long-distance lines stay at every zoom (plain rail steps back where the city lines take over), and each city line keeps its real colour. Roads and trails follow the ground.${real?`<br>Population: <a href="https://www.worldpop.org" target="_blank" rel="noopener">WorldPop</a> 2020, 1 km grid (CC BY 4.0).`:""}<br>Land cover: High-Resolution Land-Use and Land-Cover Map of Japan 2024, v26.03 (<a href="https://pen.envr.tsukuba.ac.jp/~utlulc/" target="_blank" rel="noopener">University of Tsukuba</a>), 100 m, summarised to ~450 m.<br>Snow: NOAA/NESDIS IMS daily snow and ice analysis, 4 km (<a href="https://nsidc.org/data/g02156/versions/1" target="_blank" rel="noopener">NSIDC G02156</a>), Nov 4 &amp; 11 of 2005–2020, placed by elevation.<br>Terrain: USGS GMTED2010, 1 km mean elevation. Coastline &amp; lakes: Global Map Japan (GSI).<br>Railways: 「国土数値情報（鉄道データ）」（国土交通省）を加工して作成 · MLIT National Land Numerical Information, railway data 2024 (CC BY 4.0), processed. Tunnels and viaducts are estimated.</p>`;
   kp.querySelectorAll("canvas[data-sw]").forEach(c=>swatch(c,c.dataset.sw));
   kp.querySelectorAll("[data-h]").forEach(b=>b.onclick=()=>{const t=b.dataset.h;if(SET.hide[t])delete SET.hide[t];else SET.hide[t]=true;saveSet();invalidate();paintKey()})}
 /* redraw whatever the guide is showing (after switching map style) */
