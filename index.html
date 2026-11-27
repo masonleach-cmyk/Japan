@@ -1222,13 +1222,13 @@ const cam={x:620,y:1050,s:.3,rot:0,tilt:.1,zm:0};
 const S_MIN=.18;let S_MAX=60,TILT_MAX=1.0;
 /* city tiles with 3D buildings (see the city detail section). CK: how near a city the camera is, how far terrain has
    eased toward true height (flat), how far the buildings have risen (vis), and the governor's quality level (q). */
-const CITY_TILES=[{id:"akasaka",url:"city-akasaka-v1.json",ll:[139.724,35.655,139.752,35.684]}];
+const CITY_TILES=[{id:"akasaka",url:"city-akasaka-v2.json",ll:[139.724,35.655,139.752,35.684]}];
 for(const t of CITY_TILES){const a=P(t.ll[0],t.ll[3]),b=P(t.ll[2],t.ll[1]);t.wb=[a[0],a[1],b[0],b[1]];t.st=0}
 const cs01=t=>{t=t<0?0:t>1?1:t;return t*t*(3-2*t)};
-const CK={near:0,flat:0,vis:0,q:2,ema:16.7,slow:0,fast:0};
+const CK={near:0,flat:0,vis:0,q:2,ema:16.7,slow:0,fast:0,dm:1e9};   /* vis: how close the camera is (labels, glow hand-off); buildings never switch off */
 function cityNear(x,y){let k=0;for(const t of CITY_TILES){const b=t.wb,d=Math.hypot(Math.max(b[0]-x,0,x-b[2]),Math.max(b[1]-y,0,y-b[3]));k=Math.max(k,1-cs01(d/1.3))}return k}
 const cityOn=()=>SET.city!==false&&P3ON();
-function cityUpd(){if(!cityOn()){CK.near=CK.flat=CK.vis=0;return}const Dm=FOC()/cam.s*M_PER_U*(CK.q<1?1.6:1);
+function cityUpd(){if(!cityOn()){CK.near=CK.flat=CK.vis=0;return}const Dm=FOC()/cam.s*M_PER_U;CK.dm=Dm;
   CK.near=cityNear(cam.x,cam.y);CK.vis=1-cs01((Dm-6500)/6000);CK.flat=CK.near*(1-cs01((Dm-9000)/11000))}
 /* near a city the 3D camera may come down to street level (about 140 m away) */
 function smax(){return cityOn()?S_MAX+(Math.max(S_MAX,FOC()*M_PER_U/140)-S_MAX)*cityNear(cam.x,cam.y):S_MAX}
@@ -2217,7 +2217,7 @@ const GL={gl:null,lost:false,
   const use=P=>{const u=P.u;gl.useProgram(P.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform2f(u.uRes,W,H);gl.uniform1f(u.uDpr,DPR);gl.uniform1f(u.uZs,m.zs);gl.uniform1f(u.uF,m.F);gl.uniform1f(u.uNear,near);
     gl.uniform1f(u.uBias,.006);gl.uniform1f(u.uJit,.8*smooth01((cam.tilt-.55)/.6));gl.uniform1f(u.uZa,za);gl.uniform1f(u.uZb,zb);gl.uniform3f(u.uFog,m.fs,m.fe,0);if(u.uPal)gl.uniform3fv(u.uPal,this.P);
     gl.uniform3f(u.uE,m.ex,m.ey,m.ez);gl.uniform1f(u.uD,m.D);gl.uniformMatrix2fv(u.uMi,false,[1,0,0,1]);gl.uniform1f(u.uPs,P===this.pGlow3?.5:1);gl.uniform1f(u.uPm,this.pm);gl.uniform1f(u.uKd,KD3);gl.uniform1f(u.uLb,LB3);gl.uniform1f(u.uSP,LT_SP);gl.uniform1f(u.uGrl,GRL);
-    gl.uniform1f(u.uEx,EX());gl.uniform1f(u.uSl,smooth01((cam.tilt-.35)/.6));this.fxU(u);if(u.uCity){const cb=CITYL.fadeBox();gl.uniform4f(u.uCity,cb[0],cb[1],cb[2],cb[3]);gl.uniform1f(u.uCA,cb[4])}};
+    gl.uniform1f(u.uEx,EX());gl.uniform1f(u.uSl,smooth01((cam.tilt-.35)/.6));this.fxU(u);if(u.uCity){const cb=CITYL.fadeBox();gl.uniform4f(u.uCity,cb[0],cb[1],cb[2],cb[3]);gl.uniform1f(u.uCA,P===this.pGlow3?cb[4]*CK.vis:cb[4])}};
   const pass=(P,r)=>{const u=P.u;gl.uniform1f(u.uGp,r===1?1:0);for(const it of list){const b=it[0];if(!b.n[r])continue;const k=it[3]/(LT_N*LT_SP),cl=it[5];
     gl.uniform3f(u.uO,it[1],it[2],k);gl.uniform1f(u.uA,it[4]);gl.uniform1f(u.uZ,it[8]);gl.uniform1f(u.uTf,it[9]);gl.uniform1f(u.uBt,it[10]);
     if(cl)gl.uniform4f(u.uClip,cl[0],cl[1],cl[2],cl[3]);else gl.uniform4f(u.uClip,-1,-1,1e6,1e6);
@@ -2232,14 +2232,17 @@ const GL={gl:null,lost:false,
     gl.uniform2f(C.u.uInv,1/GLC.width,1/GLC.height);gl.bindVertexArray(this.vEmpty);gl.drawArrays(gl.TRIANGLES,0,3);gl.activeTexture(gl.TEXTURE0);gl.enable(gl.DEPTH_TEST);use(this.pDot3)}
   if(this.skip!=="dots")pass(this.pDot3,2);CITYL.glow(gl,m);gl.disable(gl.DEPTH_TEST);gl.depthMask(true);gl.bindVertexArray(null)}};
 /* ================= city detail: 3D buildings =================
-   A city is a set of tiles (one so far: Akasaka, file city-akasaka-v1.json, fetched the first time you come near and
-   then kept by the service worker). Each tile holds generated buildings as rotated boxes (one shared box shape drawn
-   many times, about 36 bytes each on the GPU), hand-placed landmark outlines at their real heights, street lights,
-   trees and a ground texture with the real streets. Zoom stages, by camera distance:
-     beyond 12.5 km   no buildings: the population lights carry the city
-     12.5 → 6.5 km    buildings rise out of the ground and the dots under them fade out
-     closer           the full city. A window is drawn as its own dot once it is a few px on screen; before that the
-                      wall carries the windows' average glow, so middle distances read as plain glowing boxes
+   A city is a set of tiles (one so far: Akasaka, file city-akasaka-v2.json, fetched the first time you come near and
+   then kept by the service worker). Each tile holds the real OpenStreetMap buildings: the near-rectangles (about 4 in 5)
+   as rotated boxes sharing one box shape (36 bytes each on the GPU), the rest with their true outlines; landmark
+   outlines at their real heights, street lights, trees and a ground texture with the real streets. Heights come from
+   OpenStreetMap where mapped (about 1 in 10), otherwise each 100 m area's buildings are set to its real average.
+   The city never switches off; it gets simpler with distance:
+     close            every window is its own dot (once a few px on screen), trees, every street light, landmark labels
+     a few km         walls carry their windows' average glow; trees go (about 9 km), small-street lights fade (4–9 km)
+     far              plain boxes with brighter roofs so the shapes still read, the main-road and expressway lights
+                      tracing the big roads, and the population glow laid back over the city as it was before
+   The land-cover dots under the city always give way to its street-level ground.
    Terrain eases to true height as you zoom into a city, so buildings stand on the real ground, not ×10 hills.
    A quality governor (cityGov) watches the frame time while the map moves and trims detail to hold 60 fps. */
 const CITY_GLSL={
@@ -2260,10 +2263,10 @@ void main(){float ed=min(min(aP.x-uBox.x,uBox.z-aP.x),min(aP.y-uBox.y,uBox.w-aP.
  vec4 cp=uVP*vec4(aP.xy,aB.x*uZs+(aP.z>.5?H*rise:-40.)/uMpu,1.);gl_Position=cp;vW=cp.w;
  vRoof=(aU.y==0.&&aU.z==0.)?1.:0.;vN=aU.yz;vUV=vec2(aU.x,aP.z>.5?H:-40.);vK=vec3(aB.y,aB.z,H);}`,
  bF:`#version 300 es
-precision highp float;in vec2 vUV;in vec2 vN;in vec3 vK;in float vW;in float vRoof;out vec4 o;uniform vec3 uHz,uFog;uniform float uDet;
+precision highp float;in vec2 vUV;in vec2 vN;in vec3 vK;in float vW;in float vRoof;out vec4 o;uniform vec3 uHz,uFog,uTown;uniform float uDet,uFar,uTk;
 float h21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
 void main(){float seed=vK.x,kind=vK.y,H=vK.z;vec3 c;
- if(vRoof>.5)c=vec3(.085,.1,.135)+vec3(.018)*h21(vec2(seed,1.7));
+ if(vRoof>.5)c=vec3(.085,.1,.135)+vec3(.018)*h21(vec2(seed,1.7))+uFar*vec3(.06,.07,.09);
  else{float lam=.72+.38*max(dot(vN,normalize(vec2(-.55,.83))),-.4),v=max(vUV.y,0.);
   vec3 wall=vec3(.072,.088,.125)*lam+vec3(.025,.035,.06)*clamp(v/220.,0.,1.)+vec3(.07,.045,.02)*exp(-v/10.);
   if(kind>2.5){vec3 fl=kind<3.5?vec3(.85,.26,.12):kind<4.5?vec3(.78,.8,.82):vec3(.86,.7,.46);c=fl*(1.-.55*clamp(v/max(H,1.),0.,1.))*(.55+.45*lam);}
@@ -2274,8 +2277,10 @@ void main(){float seed=vK.x,kind=vK.y,H=vK.z;vec3 c;
    vec3 warm=mix(vec3(1.,.66,.3),vec3(1.,.82,.52),tint),cool=mix(vec3(.74,.86,1.),vec3(1.,.93,.78),tint*.6);
    vec3 lc=(kind<.5?warm:mix(cool,warm,step(.8,tint)))*(.75+.5*h21(id+3.1)),dim=vec3(.085,.11,.16);
    bool inside=vUV.y>.8&&vUV.y<H-1.2;float lod=smoothstep(2.2,5.5,min(cw,fh)/px*uDet),area=3.1416*r*r/.82/(cw*fh);
-   c=wall+(inside?mix(mix(dim,lc*.9,lf)*area*1.25,mix(dim,lc,lit)*cov,lod):vec3(0.));
+   c=wall+(inside?mix(mix(dim,lc*.9,lf)*area*(1.25+2.2*uFar),mix(dim,lc,lit)*cov,lod):vec3(0.));
    if(vUV.y<3.2&&vUV.y>0.&&kind<1.5)c+=step(.55,h21(vec2(floor(vUV.x/6.),seed)))*vec3(.55,.38,.18)*(1.-vUV.y/3.4)*.8;}}
+ /* far away (on the Real terrain map) the city takes the map's own town colour: pale roofs, shaded walls, dark streets between */
+ if(uTk>0.){vec3 tw=uTown*(.9+.2*h21(vec2(seed,4.1)));c=vRoof>.5?mix(c,tw,uTk):mix(c,tw*(.36+.3*max(dot(vN,normalize(vec2(-.55,.83))),0.)),uTk*.9);}
  float fo=smoothstep(uFog.x,uFog.y,vW)*uFog.z;o=vec4(mix(c,uHz,fo),1.);}`,
  gV:`#version 300 es
 layout(location=0) in vec3 aP;layout(location=1) in vec2 aT;uniform mat4 uVP;uniform float uZs,uMpu;out vec2 vT;out vec2 vWp;out float vW;
@@ -2285,10 +2290,11 @@ precision highp float;in vec2 vT;in vec2 vWp;in float vW;out vec4 o;uniform samp
 void main(){float ed=min(min(vWp.x-uBox.x,uBox.z-vWp.x),min(vWp.y-uBox.y,uBox.w-vWp.y)),a=uA*smoothstep(0.,.23,ed);if(a<=0.)discard;
  vec3 c=texture(uTex,vT).rgb*1.55;c=mix(c,uHz,smoothstep(uFog.x,uFog.y,vW)*uFog.z);o=vec4(c*a,a);}`,
  pV:`#version 300 es
-layout(location=0) in vec4 aP;layout(location=1) in vec3 aS;uniform mat4 uVP;uniform float uZs,uMpu,uPS,uA,uDpr;uniform vec4 uBox;
+layout(location=0) in vec4 aP;layout(location=1) in vec3 aS;uniform mat4 uVP;uniform float uZs,uMpu,uPS,uA,uDpr,uDm;uniform vec4 uBox;
 out vec3 vC;out float vA;flat out float vTy;
 float h1(float x){return fract(sin(x*91.7)*43758.5);}
 void main(){float sz=aS.x,ty=aS.y,sd=aS.z,ed=min(min(aP.x-uBox.x,uBox.z-aP.x),min(aP.y-uBox.y,uBox.w-aP.y)),ef=smoothstep(0.,.23,ed),a=uA*ef;
+ if(ty<.5)a*=1.-smoothstep(4000.,9000.,uDm);else if(ty>2.5&&ty<3.5)a*=1.-smoothstep(6500.,9000.,uDm);else if(ty<2.5)a*=1.+1.6*smoothstep(4000.,20000.,uDm);   /* main roads read further out */
  bool up=ty>3.5&&ty<6.5;vec4 cp=uVP*vec4(aP.xy,aP.w*uZs+aP.z*(up?a:1.)/uMpu,1.);gl_Position=cp;
  vec3 c;if(ty<.5)c=vec3(1.,.6,.24);else if(ty<1.5)c=vec3(1.,.7,.36);else if(ty<2.5)c=vec3(.92,.86,.72);
  else if(ty<3.5){float r=h1(sd);c=r<.66?mix(vec3(.035,.085,.05),vec3(.055,.12,.065),h1(sd+1.)):r<.86?vec3(.19,.16,.045):vec3(.19,.065,.04);}
@@ -2310,7 +2316,7 @@ function cityEar(p){const n=p.length;if(n<3)return[];const V=[...Array(n).keys()
   if(V.length===3)out.push(V[0],V[1],V[2]);else for(let i=1;i<V.length-1;i++)out.push(V[0],V[i],V[i+1]);return out}
 const CITYL={progs:null,drawn:false,fpsEl:null,fpsT:0,
  fadeBox(){let best=null,bd=1e9;for(const t of CITY_TILES){if(t.st!==3)continue;const b=t.wb,d=Math.hypot(Math.max(b[0]-cam.x,0,cam.x-b[2]),Math.max(b[1]-cam.y,0,cam.y-b[3]));if(d<bd){bd=d;best=t}}
-   return best&&cityOn()&&CK.vis>0?[best.wb[0],best.wb[1],best.wb[2],best.wb[3],CK.vis]:[0,0,0,0,0]},
+   return best&&cityOn()?[best.wb[0],best.wb[1],best.wb[2],best.wb[3],1]:[0,0,0,0,0]},
  want(m){const now=Date.now();for(const t of CITY_TILES){if(t.st>0||(t.st<0&&now<t.retry))continue;const b=t.wb;
    if(boxDist(m,b[0],b[1],0,b[2],b[3],.3)>Math.max(m.D*8,1.5))continue;
    t.st=1;fetch(t.url).then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(j=>{t.data=j;t.st=2;invalidate()}).catch(()=>{t.st=-1;t.retry=Date.now()+30000})}},
@@ -2343,6 +2349,21 @@ const CITYL={progs:null,drawn:false,fpsEl:null,fpsT:0,
    gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,16,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,1,gl.FLOAT,false,16,12);
    gl.bindBuffer(gl.ARRAY_BUFFER,g.ibuf);for(const L of[2,3,4]){gl.enableVertexAttribArray(L);gl.vertexAttribDivisor(L,1)}
    gl.vertexAttribPointer(2,4,gl.FLOAT,false,36,0);gl.vertexAttribPointer(3,4,gl.FLOAT,false,36,16);gl.vertexAttribPointer(4,1,gl.FLOAT,false,36,32);gl.bindVertexArray(null)}
+  /* real buildings with irregular outlines keep their true shape, grouped into the same chunks for culling */
+  g.pch=[];if(d.poly&&d.poly.length){const NX=Math.max(1,Math.ceil((b[2]-b[0])/.55)),NY=Math.max(1,Math.ceil((b[3]-b[1])/.55)),C=new Map();
+   for(const r of d.poly){const kind=r[0],h=r[1]/10,p=[];for(let i=2;i+1<r.length;i+=2)p.push([r[i]/10,r[i+1]/10]);if(p.length<3)continue;
+     let ar=0;for(let i=0;i<p.length;i++){const q=p[(i+1)%p.length];ar+=p[i][0]*q[1]-q[0]*p[i][1]}if(ar<0)p.reverse();
+     let cx=0,cy=0;for(const q of p){cx+=q[0];cy+=q[1]}cx/=p.length;cy/=p.length;const X=wx(cx),Y=wy(cy),base=gh(X,Y),s=rnd()*97.3;
+     const key=clamp(Math.floor((Y-b[1])/(b[3]-b[1])*NY),0,NY-1)*NX+clamp(Math.floor((X-b[0])/(b[2]-b[0])*NX),0,NX-1);
+     let c=C.get(key);if(!c){c={A:[],x0:1e9,y0:1e9,x1:-1e9,y1:-1e9,b0:1e9,b1:-1e9,h:0};C.set(key,c)}
+     const A=c.A,put=(x,y,lz,uu,nx,ny)=>{const wX=wx(x),wY=wy(y);A.push(wX,wY,lz,uu,nx,ny,h,base,s,kind);if(wX<c.x0)c.x0=wX;if(wX>c.x1)c.x1=wX;if(wY<c.y0)c.y0=wY;if(wY>c.y1)c.y1=wY};
+     let u=0;for(let i=0;i<p.length;i++){const a=p[i],q=p[(i+1)%p.length],dx=q[0]-a[0],dy=q[1]-a[1],L=Math.hypot(dx,dy)||1e-6,nx=dy/L,ny=-dx/L,u1=u+L;
+       put(a[0],a[1],0,u,nx,ny);put(q[0],q[1],0,u1,nx,ny);put(q[0],q[1],1,u1,nx,ny);put(a[0],a[1],0,u,nx,ny);put(q[0],q[1],1,u1,nx,ny);put(a[0],a[1],1,u,nx,ny);u=u1}
+     for(const i of cityEar(p))put(p[i][0],p[i][1],1,p[i][0],0,0);
+     c.b0=Math.min(c.b0,base);c.b1=Math.max(c.b1,base);c.h=Math.max(c.h,h)}
+   for(const c of C.values()){const v=gl.createVertexArray();gl.bindVertexArray(v);const bf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,bf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(c.A),gl.STATIC_DRAW);
+     gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,40,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,4,gl.FLOAT,false,40,12);
+     gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,3,gl.FLOAT,false,40,28);gl.bindVertexArray(null);g.pch.push({v,n:c.A.length/10,x0:c.x0,y0:c.y0,x1:c.x1,y1:c.y1,b0:c.b0,b1:c.b1,h:c.h})}}
   /* landmarks: their real outlines at their real heights; towers over 100 m get red aircraft lights */
   const glow=[],trees=[];
   {const A=[];let hmax=0;
@@ -2386,30 +2407,31 @@ const CITYL={progs:null,drawn:false,fpsEl:null,fpsT:0,
   g.MX=MX;g.MY=MY;return g},
  /* buildings, landmarks, trees and the street-level ground: drawn after the terrain, before the dots, writing depth
     so the dots and lines behind a building are hidden */
- solid(gl,m,VP,FG,HZ){this.drawn=false;if(!cityOn()||(CK.near<=0&&CK.vis<=0))return;
-  if(m.D*M_PER_U<30000)this.want(m);if(CK.vis<=.002)return;
+ solid(gl,m,VP,FG,HZ){this.drawn=false;if(!cityOn())return;if(m.D*M_PER_U<150000)this.want(m);
   for(const t of CITY_TILES)if(t.st===2&&GQ8&&this.init(gl)){try{t.g=this.build(gl,t);t.st=3}catch(e){console.warn(e);t.st=-1;t.retry=Date.now()+6e5}}
   const Pg=this.progs;if(!Pg)return;let any=false;
   const set=(P,t)=>{const u=P.u;gl.useProgram(P.p);gl.uniformMatrix4fv(u.uVP,false,VP);if(u.uZs)gl.uniform1f(u.uZs,m.zs);if(u.uMpu)gl.uniform1f(u.uMpu,M_PER_U);
-    if(u.uBox)gl.uniform4f(u.uBox,t.wb[0],t.wb[1],t.wb[2],t.wb[3]);if(u.uRise)gl.uniform1f(u.uRise,CK.vis);if(u.uA)gl.uniform1f(u.uA,CK.vis);if(u.uHz)gl.uniform3f(u.uHz,HZ[0],HZ[1],HZ[2]);
+    if(u.uBox)gl.uniform4f(u.uBox,t.wb[0],t.wb[1],t.wb[2],t.wb[3]);if(u.uRise)gl.uniform1f(u.uRise,1);if(u.uA)gl.uniform1f(u.uA,1);if(u.uDm)gl.uniform1f(u.uDm,CK.dm);if(u.uFar)gl.uniform1f(u.uFar,cs01((CK.dm-3000)/20000));if(u.uTown){const c=LCC[0],k=1.12;gl.uniform3f(u.uTown,parseInt(c.slice(1,3),16)/255*k,parseInt(c.slice(3,5),16)/255*k,parseInt(c.slice(5,7),16)/255*k);gl.uniform1f(u.uTk,SET.dots==="terrain"?cs01((CK.dm-2500)/7000):0)}if(u.uHz)gl.uniform3f(u.uHz,HZ[0],HZ[1],HZ[2]);
     if(u.uFog)gl.uniform3f(u.uFog,FG[0],FG[1],FG[2]);if(u.uDet)gl.uniform1f(u.uDet,CK.q>1?1:CK.q>0?.5:.3);if(u.uM)gl.uniform2f(u.uM,t.g.MX,t.g.MY);if(u.uPS)gl.uniform1f(u.uPS,m.F*DPR);if(u.uDpr)gl.uniform1f(u.uDpr,DPR)};
   gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
   for(const t of CITY_TILES){if(t.st!==3)continue;const b=t.wb,g=t.g;if(!boxIn(m,b[0],b[1],-.1,b[2],b[3],(g.hmax+60)/M_PER_U+.4))continue;any=true;
     if(g.tex){gl.depthMask(false);set(Pg.g,t);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,g.tex);gl.uniform1i(Pg.g.u.uTex,0);gl.bindVertexArray(g.gv);gl.drawElements(gl.TRIANGLES,g.gn,gl.UNSIGNED_SHORT,0)}
-    gl.depthMask(true);set(Pg.b,t);gl.bindVertexArray(g.vao);gl.bindBuffer(gl.ARRAY_BUFFER,g.ibuf);const far=CK.q>0?1e9:3500/M_PER_U;
-    for(const c of g.chunks){const zb=c.b0*m.zs-40/M_PER_U,zt=c.b1*m.zs+c.h*CK.vis/M_PER_U;if(!boxIn(m,c.x0,c.y0,zb,c.x1,c.y1,zt)||boxDist(m,c.x0,c.y0,zb,c.x1,c.y1,zt)>far)continue;const o=c.off*36;
+    gl.depthMask(true);set(Pg.b,t);gl.bindVertexArray(g.vao);gl.bindBuffer(gl.ARRAY_BUFFER,g.ibuf);const far=1e9;
+    for(const c of g.chunks){const zb=c.b0*m.zs-40/M_PER_U,zt=c.b1*m.zs+c.h/M_PER_U;if(!boxIn(m,c.x0,c.y0,zb,c.x1,c.y1,zt)||boxDist(m,c.x0,c.y0,zb,c.x1,c.y1,zt)>far)continue;const o=c.off*36;
       gl.vertexAttribPointer(2,4,gl.FLOAT,false,36,o);gl.vertexAttribPointer(3,4,gl.FLOAT,false,36,o+16);gl.vertexAttribPointer(4,1,gl.FLOAT,false,36,o+32);gl.drawArraysInstanced(gl.TRIANGLES,0,30,c.n)}
-    set(Pg.l,t);gl.bindVertexArray(g.lm);gl.drawArrays(gl.TRIANGLES,0,g.lmN);
-    if(CK.q>0){set(Pg.p,t);gl.bindVertexArray(g.trees.v);gl.drawArrays(gl.POINTS,0,g.trees.n)}}
+    set(Pg.l,t);
+    for(const c of g.pch){const zb=c.b0*m.zs-40/M_PER_U,zt=c.b1*m.zs+c.h/M_PER_U;if(!boxIn(m,c.x0,c.y0,zb,c.x1,c.y1,zt)||boxDist(m,c.x0,c.y0,zb,c.x1,c.y1,zt)>far)continue;gl.bindVertexArray(c.v);gl.drawArrays(gl.TRIANGLES,0,c.n)}
+    gl.bindVertexArray(g.lm);gl.drawArrays(gl.TRIANGLES,0,g.lmN);
+    if(CK.q>0&&CK.dm<9000){set(Pg.p,t);gl.bindVertexArray(g.trees.v);gl.drawArrays(gl.POINTS,0,g.trees.n)}}
   gl.depthMask(false);gl.disable(gl.DEPTH_TEST);gl.bindVertexArray(null);this.drawn=any;this.vp=VP},
  /* street lights, the Tokyo Tower lattice and aircraft lights: added light, drawn last */
  glow(gl,m){if(!this.drawn)return;const Pg=this.progs,P=Pg.p,u=P.u;gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.depthMask(false);gl.blendFunc(gl.ONE,gl.ONE);gl.useProgram(P.p);
-  gl.uniformMatrix4fv(u.uVP,false,this.vp);gl.uniform1f(u.uZs,m.zs);gl.uniform1f(u.uMpu,M_PER_U);gl.uniform1f(u.uA,CK.vis);gl.uniform1f(u.uPS,m.F*DPR);gl.uniform1f(u.uDpr,DPR);
+  gl.uniformMatrix4fv(u.uVP,false,this.vp);gl.uniform1f(u.uZs,m.zs);gl.uniform1f(u.uMpu,M_PER_U);gl.uniform1f(u.uA,1);gl.uniform1f(u.uDm,CK.dm);gl.uniform1f(u.uPS,m.F*DPR);gl.uniform1f(u.uDpr,DPR);
   for(const t of CITY_TILES){if(t.st!==3)continue;gl.uniform4f(u.uBox,t.wb[0],t.wb[1],t.wb[2],t.wb[3]);gl.bindVertexArray(t.g.glow.v);gl.drawArrays(gl.POINTS,0,t.g.glow.n)}
   gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.disable(gl.DEPTH_TEST);gl.bindVertexArray(null)}};
 /* the frame-time governor: while the map moves, it keeps a running frame time; if the city pushes it past ~19.5 ms
-   (under ~51 fps) for a moment, detail steps down (window dots only up close, then no trees and a shorter building
-   range); after a few seconds back under ~15 ms it steps up again. Settings → City can show the frame rate. */
+   (under ~51 fps) for a moment, detail steps down (window dots only up close, then no trees and simpler windows;
+   buildings themselves always stay); after a few seconds back under ~15 ms it steps up again. Settings → City can show the frame rate. */
 function cityGov(raw){
   if(raw>0&&raw<120){CK.ema+=(raw-CK.ema)*.08;
     if(CITYL.drawn){if(CK.ema>19.5){CK.fast=0;if(++CK.slow>40&&CK.q>0){CK.q--;CK.slow=0;wantFull=true;nudge()}}
@@ -3102,7 +3124,7 @@ function paintKey(){const kp=$("#keyp");if(!kp||kp.hidden)return;
     <h4>Between cities</h4>${["shin","rail","road","ferry","bridge","trail"].map(row).join("")}${fix("fly","Flight","Shown only when a route flies")}
     <h4>In the city · zoom in</h4>${["sub","jr","pr"].map(row).join("")}
     <h4>On the map</h4>${fix("st1","Station","One line stops here")}${fix("st2","Interchange","Change between lines here")}${fix("route","Your route","Pick one in Routes; icons show how each leg travels")}${fix("tun","Tunnel","Estimated from the terrain")}${fix("via","Viaduct","Estimated; pillars show when the map is tilted")}
-    <p class="kfoot">Long-distance lines stay at every zoom (plain rail steps back where the city lines take over), and each city line keeps its real colour. Roads and trails follow the ground.<br>3D buildings (Akasaka): generated along the real streets of <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> (ODbL), heights matched to GHSL GHS-BUILT-H 2018 (European Commission JRC); landmarks at their real heights.${real?`<br>Population: <a href="https://www.worldpop.org" target="_blank" rel="noopener">WorldPop</a> 2020, 1 km grid (CC BY 4.0).`:""}<br>Land cover: High-Resolution Land-Use and Land-Cover Map of Japan 2024, v26.03 (<a href="https://pen.envr.tsukuba.ac.jp/~utlulc/" target="_blank" rel="noopener">University of Tsukuba</a>), 100 m, summarised to ~450 m.<br>Snow: NOAA/NESDIS IMS daily snow and ice analysis, 4 km (<a href="https://nsidc.org/data/g02156/versions/1" target="_blank" rel="noopener">NSIDC G02156</a>), Nov 4 &amp; 11 of 2005–2020, placed by elevation.${TR&&SET.leaves?`<br>Autumn leaves: 気象庁 生物季節観測 · Japan Meteorological Agency phenological observations, maple and ginkgo, 1991–2025.`:""}${SET.sea?`<br>Sea floor: <a href="https://www.gebco.net" target="_blank" rel="noopener">GEBCO</a> Compilation Group (2026) GEBCO 2026 Grid, averaged to ~1.8 km.`:""}${SET.parks?`<br>Parks: 「国土数値情報（自然公園地域データ）」（国土交通省）を加工して作成 · MLIT natural park areas, 2010.`:""}<br>Terrain: USGS GMTED2010, 1 km mean elevation. Coastline &amp; lakes: Global Map Japan (GSI).<br>Railways: 「国土数値情報（鉄道データ）」（国土交通省）を加工して作成 · MLIT National Land Numerical Information, railway data 2024 (CC BY 4.0), processed. Tunnels and viaducts are estimated.</p>`;
+    <p class="kfoot">Long-distance lines stay at every zoom (plain rail steps back where the city lines take over), and each city line keeps its real colour. Roads and trails follow the ground.<br>3D buildings (Akasaka): outlines from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> (ODbL); heights from OpenStreetMap where mapped, otherwise matched to the 100 m averages of GHSL GHS-BUILT-H 2018 (European Commission JRC); landmarks at their real heights.${real?`<br>Population: <a href="https://www.worldpop.org" target="_blank" rel="noopener">WorldPop</a> 2020, 1 km grid (CC BY 4.0).`:""}<br>Land cover: High-Resolution Land-Use and Land-Cover Map of Japan 2024, v26.03 (<a href="https://pen.envr.tsukuba.ac.jp/~utlulc/" target="_blank" rel="noopener">University of Tsukuba</a>), 100 m, summarised to ~450 m.<br>Snow: NOAA/NESDIS IMS daily snow and ice analysis, 4 km (<a href="https://nsidc.org/data/g02156/versions/1" target="_blank" rel="noopener">NSIDC G02156</a>), Nov 4 &amp; 11 of 2005–2020, placed by elevation.${TR&&SET.leaves?`<br>Autumn leaves: 気象庁 生物季節観測 · Japan Meteorological Agency phenological observations, maple and ginkgo, 1991–2025.`:""}${SET.sea?`<br>Sea floor: <a href="https://www.gebco.net" target="_blank" rel="noopener">GEBCO</a> Compilation Group (2026) GEBCO 2026 Grid, averaged to ~1.8 km.`:""}${SET.parks?`<br>Parks: 「国土数値情報（自然公園地域データ）」（国土交通省）を加工して作成 · MLIT natural park areas, 2010.`:""}<br>Terrain: USGS GMTED2010, 1 km mean elevation. Coastline &amp; lakes: Global Map Japan (GSI).<br>Railways: 「国土数値情報（鉄道データ）」（国土交通省）を加工して作成 · MLIT National Land Numerical Information, railway data 2024 (CC BY 4.0), processed. Tunnels and viaducts are estimated.</p>`;
   kp.querySelectorAll("canvas[data-sw]").forEach(c=>swatch(c,c.dataset.sw));
   kp.querySelectorAll("[data-h]").forEach(b=>b.onclick=()=>{const t=b.dataset.h;if(SET.hide[t])delete SET.hide[t];else SET.hide[t]=true;saveSet();invalidate();paintKey()})}
 /* redraw whatever the guide is showing (after switching map style) */
