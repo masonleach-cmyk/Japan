@@ -1222,8 +1222,9 @@ const cam={x:620,y:1050,s:.3,rot:0,tilt:.1,zm:0};
 const S_MIN=.18;let S_MAX=60,TILT_MAX=1.0;
 /* city tiles with 3D buildings (see the city detail section). CK: how near a city the camera is, how far terrain has
    eased toward true height (flat), how far the buildings have risen (vis), and the governor's quality level (q). */
+function cityUnpack(buf){const u=new Uint8Array(buf);if(u[0]===0x1f&&u[1]===0x8b)return new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream("gzip"))).json();return JSON.parse(new TextDecoder().decode(u))}
 const CITY_TILES=[{id:"akasaka",url:"city-akasaka-v2.json",ll:[139.724,35.655,139.752,35.684]},
- {id:"kyoto-a1",url:"city-kyoto-v1.json",part:"kyoto-a1",city:"kyoto",ll:[135.72000,34.96000,135.74000,34.97800]},{id:"kyoto-a2",url:"city-kyoto-v1.json",part:"kyoto-a2",city:"kyoto",ll:[135.72000,34.97800,135.74000,34.99600]},{id:"kyoto-a3",url:"city-kyoto-v1.json",part:"kyoto-a3",city:"kyoto",ll:[135.72000,34.99600,135.74000,35.01400]},{id:"kyoto-a4",url:"city-kyoto-v1.json",part:"kyoto-a4",city:"kyoto",ll:[135.72000,35.01400,135.74000,35.03200]},{id:"kyoto-a5",url:"city-kyoto-v1.json",part:"kyoto-a5",city:"kyoto",ll:[135.72000,35.03200,135.74000,35.05000]},{id:"kyoto-b1",url:"city-kyoto-v1.json",part:"kyoto-b1",city:"kyoto",ll:[135.74000,34.96000,135.76000,34.97800]},{id:"kyoto-b2",url:"city-kyoto-v1.json",part:"kyoto-b2",city:"kyoto",ll:[135.74000,34.97800,135.76000,34.99600]},{id:"kyoto-b3",url:"city-kyoto-v1.json",part:"kyoto-b3",city:"kyoto",ll:[135.74000,34.99600,135.76000,35.01400]},{id:"kyoto-b4",url:"city-kyoto-v1.json",part:"kyoto-b4",city:"kyoto",ll:[135.74000,35.01400,135.76000,35.03200]},{id:"kyoto-b5",url:"city-kyoto-v1.json",part:"kyoto-b5",city:"kyoto",ll:[135.74000,35.03200,135.76000,35.05000]},{id:"kyoto-c1",url:"city-kyoto-v1.json",part:"kyoto-c1",city:"kyoto",ll:[135.76000,34.96000,135.78000,34.97800]},{id:"kyoto-c2",url:"city-kyoto-v1.json",part:"kyoto-c2",city:"kyoto",ll:[135.76000,34.97800,135.78000,34.99600]},{id:"kyoto-c3",url:"city-kyoto-v1.json",part:"kyoto-c3",city:"kyoto",ll:[135.76000,34.99600,135.78000,35.01400]},{id:"kyoto-c4",url:"city-kyoto-v1.json",part:"kyoto-c4",city:"kyoto",ll:[135.76000,35.01400,135.78000,35.03200]},{id:"kyoto-c5",url:"city-kyoto-v1.json",part:"kyoto-c5",city:"kyoto",ll:[135.76000,35.03200,135.78000,35.05000]},{id:"kyoto-d1",url:"city-kyoto-v1.json",part:"kyoto-d1",city:"kyoto",ll:[135.78000,34.96000,135.80000,34.97800]},{id:"kyoto-d2",url:"city-kyoto-v1.json",part:"kyoto-d2",city:"kyoto",ll:[135.78000,34.97800,135.80000,34.99600]},{id:"kyoto-d3",url:"city-kyoto-v1.json",part:"kyoto-d3",city:"kyoto",ll:[135.78000,34.99600,135.80000,35.01400]},{id:"kyoto-d4",url:"city-kyoto-v1.json",part:"kyoto-d4",city:"kyoto",ll:[135.78000,35.01400,135.80000,35.03200]},{id:"kyoto-d5",url:"city-kyoto-v1.json",part:"kyoto-d5",city:"kyoto",ll:[135.78000,35.03200,135.80000,35.05000]}];
+ {id:"kyoto-a1-a1",url:"city-kyoto-v2.json.gz",part:"kyoto-a1-a1",city:"kyoto",pk:0,ll:[135.64000,34.86000,135.67444,34.89333]},{id:"kyoto-a1-b1",url:"city-kyoto-v2.json.gz",part:"kyoto-a1-b1",city:"kyoto",pk:0,ll:[135.67444,34.86000,135.70889,34.89333]},{id:"kyoto-a1-a2",url:"city-kyoto-v2.json.gz",part:"kyoto-a1-a2",city:"kyoto",pk:0,ll:[135.64000,34.89333,135.67444,34.92667]},{id:"kyoto-a1-b2",url:"city-kyoto-v2.json.gz",part:"kyoto-a1-b2",city:"kyoto",pk:0,ll:[135.67444,34.89333,135.70889,34.92667]},{id:"kyoto-a1-a3",url:"city-kyoto-v2.json.gz",part:"kyoto-a1-a3",city:"kyoto",pk:0,ll:[135.64000,34.92667,135.67444,34.96000]},{id:"kyoto-a1-b3",url:"city-kyoto-v2.json.gz",part:"kyoto-a1-b3",city:"kyoto",pk:0,ll:[135.67444,34.92667,135.70889,34.96000]},{id:"kyoto-a2-a1",url:"city-kyoto-v2.json.gz",part:"kyoto-a2-a1",city:"kyoto",pk:0,ll:[135.64000,34.96000,135.67444,34.99333]},{id:"kyoto-a2-b1",url:"city-kyoto-v2.json.gz",part:"kyoto-a2-b1",city:"kyoto",pk:0,ll:[135.67444,34.96000,135.70889,34.99333]},{id:"kyoto-a2-a2",url:"city-kyoto-v2.json.gz",part:"kyoto-a2-a2",city:"kyoto",pk:0,ll:[135.64000,34.99333,135.67444,35.02667]},{id:"kyoto-a2-b2",url:"city-kyoto-v2.json.gz",part:"kyoto-a2-b2",city:"kyoto",pk:0,ll:[135.67444,34.99333,135.70889,35.02667]},{id:"kyoto-a2-a3",url:"city-kyoto-v2.json.gz",part:"kyoto-a2-a3",city:"kyoto",pk:0,ll:[135.64000,35.02667,135.67444,35.06000]},{id:"kyoto-a2-b3",url:"city-kyoto-v2.json.gz",part:"kyoto-a2-b3",city:"kyoto",pk:0,ll:[135.67444,35.02667,135.70889,35.06000]},{id:"kyoto-a3-b1",url:"city-kyoto-v2.json.gz",part:"kyoto-a3-b1",city:"kyoto",pk:0,ll:[135.67444,35.06000,135.70889,35.09333]},{id:"kyoto-a3-a2",url:"city-kyoto-v2.json.gz",part:"kyoto-a3-a2",city:"kyoto",pk:0,ll:[135.64000,35.09333,135.67444,35.12667]},{id:"kyoto-a3-b2",url:"city-kyoto-v2.json.gz",part:"kyoto-a3-b2",city:"kyoto",pk:0,ll:[135.67444,35.09333,135.70889,35.12667]},{id:"kyoto-a3-b3",url:"city-kyoto-v2.json.gz",part:"kyoto-a3-b3",city:"kyoto",pk:0,ll:[135.67444,35.12667,135.70889,35.16000]},{id:"kyoto-a1-c1",url:"city-kyoto-v2.json.gz",part:"kyoto-a1-c1",city:"kyoto",pk:0,ll:[135.70889,34.86000,135.74333,34.89333]},{id:"kyoto-a1-c2",url:"city-kyoto-v2.json.gz",part:"kyoto-a1-c2",city:"kyoto",pk:0,ll:[135.70889,34.89333,135.74333,34.92667]},{id:"kyoto-a1-c3",url:"city-kyoto-v2.json.gz",part:"kyoto-a1-c3",city:"kyoto",pk:0,ll:[135.70889,34.92667,135.74333,34.96000]},{id:"kyoto-a2-c1",url:"city-kyoto-v2.json.gz",part:"kyoto-a2-c1",city:"kyoto",pk:0,ll:[135.70889,34.96000,135.74333,34.99333]},{id:"kyoto-a2-c2",url:"city-kyoto-v2.json.gz",part:"kyoto-a2-c2",city:"kyoto",pk:0,ll:[135.70889,34.99333,135.74333,35.02667]},{id:"kyoto-a2-c3",url:"city-kyoto-v2.json.gz",part:"kyoto-a2-c3",city:"kyoto",pk:0,ll:[135.70889,35.02667,135.74333,35.06000]},{id:"kyoto-a3-c1",url:"city-kyoto-v2.json.gz",part:"kyoto-a3-c1",city:"kyoto",pk:0,ll:[135.70889,35.06000,135.74333,35.09333]},{id:"kyoto-a3-c2",url:"city-kyoto-v2.json.gz",part:"kyoto-a3-c2",city:"kyoto",pk:0,ll:[135.70889,35.09333,135.74333,35.12667]},{id:"kyoto-a3-c3",url:"city-kyoto-v2.json.gz",part:"kyoto-a3-c3",city:"kyoto",pk:0,ll:[135.70889,35.12667,135.74333,35.16000]},{id:"kyoto-b1-a1",url:"city-kyoto-v2.json.gz",part:"kyoto-b1-a1",city:"kyoto",pk:0,ll:[135.74333,34.86000,135.77778,34.89333]},{id:"kyoto-b1-b1",url:"city-kyoto-v2.json.gz",part:"kyoto-b1-b1",city:"kyoto",pk:0,ll:[135.77778,34.86000,135.81222,34.89333]},{id:"kyoto-b1-a2",url:"city-kyoto-v2.json.gz",part:"kyoto-b1-a2",city:"kyoto",pk:0,ll:[135.74333,34.89333,135.77778,34.92667]},{id:"kyoto-b1-b2",url:"city-kyoto-v2.json.gz",part:"kyoto-b1-b2",city:"kyoto",pk:0,ll:[135.77778,34.89333,135.81222,34.92667]},{id:"kyoto-b1-a3",url:"city-kyoto-v2.json.gz",part:"kyoto-b1-a3",city:"kyoto",pk:0,ll:[135.74333,34.92667,135.77778,34.96000]},{id:"kyoto-b1-b3",url:"city-kyoto-v2.json.gz",part:"kyoto-b1-b3",city:"kyoto",pk:0,ll:[135.77778,34.92667,135.81222,34.96000]},{id:"kyoto-b2-a1",url:"city-kyoto-v2.json.gz",part:"kyoto-b2-a1",city:"kyoto",pk:0,ll:[135.74333,34.96000,135.77778,34.99333]},{id:"kyoto-b2-b1",url:"city-kyoto-v2.json.gz",part:"kyoto-b2-b1",city:"kyoto",pk:0,ll:[135.77778,34.96000,135.81222,34.99333]},{id:"kyoto-b2-a2",url:"city-kyoto-v2.json.gz",part:"kyoto-b2-a2",city:"kyoto",pk:0,ll:[135.74333,34.99333,135.77778,35.02667]},{id:"kyoto-b2-b2",url:"city-kyoto-v2.json.gz",part:"kyoto-b2-b2",city:"kyoto",pk:0,ll:[135.77778,34.99333,135.81222,35.02667]},{id:"kyoto-b2-a3",url:"city-kyoto-v2.json.gz",part:"kyoto-b2-a3",city:"kyoto",pk:0,ll:[135.74333,35.02667,135.77778,35.06000]},{id:"kyoto-b2-b3",url:"city-kyoto-v2.json.gz",part:"kyoto-b2-b3",city:"kyoto",pk:0,ll:[135.77778,35.02667,135.81222,35.06000]},{id:"kyoto-b3-a1",url:"city-kyoto-v2.json.gz",part:"kyoto-b3-a1",city:"kyoto",pk:0,ll:[135.74333,35.06000,135.77778,35.09333]},{id:"kyoto-b3-b1",url:"city-kyoto-v2.json.gz",part:"kyoto-b3-b1",city:"kyoto",pk:0,ll:[135.77778,35.06000,135.81222,35.09333]},{id:"kyoto-b3-a2",url:"city-kyoto-v2.json.gz",part:"kyoto-b3-a2",city:"kyoto",pk:0,ll:[135.74333,35.09333,135.77778,35.12667]},{id:"kyoto-b3-b2",url:"city-kyoto-v2.json.gz",part:"kyoto-b3-b2",city:"kyoto",pk:0,ll:[135.77778,35.09333,135.81222,35.12667]},{id:"kyoto-b3-a3",url:"city-kyoto-v2.json.gz",part:"kyoto-b3-a3",city:"kyoto",pk:0,ll:[135.74333,35.12667,135.77778,35.16000]},{id:"kyoto-b3-b3",url:"city-kyoto-v2.json.gz",part:"kyoto-b3-b3",city:"kyoto",pk:0,ll:[135.77778,35.12667,135.81222,35.16000]},{id:"kyoto-b1-c1",url:"city-kyoto-v2.json.gz",part:"kyoto-b1-c1",city:"kyoto",pk:0,ll:[135.81222,34.86000,135.84667,34.89333]},{id:"kyoto-b1-c2",url:"city-kyoto-v2.json.gz",part:"kyoto-b1-c2",city:"kyoto",pk:0,ll:[135.81222,34.89333,135.84667,34.92667]},{id:"kyoto-b1-c3",url:"city-kyoto-v2.json.gz",part:"kyoto-b1-c3",city:"kyoto",pk:0,ll:[135.81222,34.92667,135.84667,34.96000]},{id:"kyoto-b2-c1",url:"city-kyoto-v2.json.gz",part:"kyoto-b2-c1",city:"kyoto",pk:0,ll:[135.81222,34.96000,135.84667,34.99333]},{id:"kyoto-b2-c2",url:"city-kyoto-v2.json.gz",part:"kyoto-b2-c2",city:"kyoto",pk:0,ll:[135.81222,34.99333,135.84667,35.02667]},{id:"kyoto-b2-c3",url:"city-kyoto-v2.json.gz",part:"kyoto-b2-c3",city:"kyoto",pk:0,ll:[135.81222,35.02667,135.84667,35.06000]},{id:"kyoto-b3-c1",url:"city-kyoto-v2.json.gz",part:"kyoto-b3-c1",city:"kyoto",pk:0,ll:[135.81222,35.06000,135.84667,35.09333]},{id:"kyoto-b3-c2",url:"city-kyoto-v2.json.gz",part:"kyoto-b3-c2",city:"kyoto",pk:0,ll:[135.81222,35.09333,135.84667,35.12667]},{id:"kyoto-b3-c3",url:"city-kyoto-v2.json.gz",part:"kyoto-b3-c3",city:"kyoto",pk:0,ll:[135.81222,35.12667,135.84667,35.16000]},{id:"kyoto-c1-a1",url:"city-kyoto-v2.json.gz",part:"kyoto-c1-a1",city:"kyoto",pk:0,ll:[135.84667,34.86000,135.88111,34.89333]},{id:"kyoto-c1-b1",url:"city-kyoto-v2.json.gz",part:"kyoto-c1-b1",city:"kyoto",pk:0,ll:[135.88111,34.86000,135.91556,34.89333]},{id:"kyoto-c1-a2",url:"city-kyoto-v2.json.gz",part:"kyoto-c1-a2",city:"kyoto",pk:0,ll:[135.84667,34.89333,135.88111,34.92667]},{id:"kyoto-c1-b2",url:"city-kyoto-v2.json.gz",part:"kyoto-c1-b2",city:"kyoto",pk:0,ll:[135.88111,34.89333,135.91556,34.92667]},{id:"kyoto-c1-a3",url:"city-kyoto-v2.json.gz",part:"kyoto-c1-a3",city:"kyoto",pk:0,ll:[135.84667,34.92667,135.88111,34.96000]},{id:"kyoto-c1-b3",url:"city-kyoto-v2.json.gz",part:"kyoto-c1-b3",city:"kyoto",pk:0,ll:[135.88111,34.92667,135.91556,34.96000]},{id:"kyoto-c2-a1",url:"city-kyoto-v2.json.gz",part:"kyoto-c2-a1",city:"kyoto",pk:0,ll:[135.84667,34.96000,135.88111,34.99333]},{id:"kyoto-c2-b1",url:"city-kyoto-v2.json.gz",part:"kyoto-c2-b1",city:"kyoto",pk:0,ll:[135.88111,34.96000,135.91556,34.99333]},{id:"kyoto-c2-a2",url:"city-kyoto-v2.json.gz",part:"kyoto-c2-a2",city:"kyoto",pk:0,ll:[135.84667,34.99333,135.88111,35.02667]},{id:"kyoto-c2-b2",url:"city-kyoto-v2.json.gz",part:"kyoto-c2-b2",city:"kyoto",pk:0,ll:[135.88111,34.99333,135.91556,35.02667]},{id:"kyoto-c2-a3",url:"city-kyoto-v2.json.gz",part:"kyoto-c2-a3",city:"kyoto",pk:0,ll:[135.84667,35.02667,135.88111,35.06000]},{id:"kyoto-c2-b3",url:"city-kyoto-v2.json.gz",part:"kyoto-c2-b3",city:"kyoto",pk:0,ll:[135.88111,35.02667,135.91556,35.06000]},{id:"kyoto-c3-a1",url:"city-kyoto-v2.json.gz",part:"kyoto-c3-a1",city:"kyoto",pk:0,ll:[135.84667,35.06000,135.88111,35.09333]},{id:"kyoto-c3-b1",url:"city-kyoto-v2.json.gz",part:"kyoto-c3-b1",city:"kyoto",pk:0,ll:[135.88111,35.06000,135.91556,35.09333]},{id:"kyoto-c3-a2",url:"city-kyoto-v2.json.gz",part:"kyoto-c3-a2",city:"kyoto",pk:0,ll:[135.84667,35.09333,135.88111,35.12667]},{id:"kyoto-c3-b2",url:"city-kyoto-v2.json.gz",part:"kyoto-c3-b2",city:"kyoto",pk:0,ll:[135.88111,35.09333,135.91556,35.12667]},{id:"kyoto-c3-a3",url:"city-kyoto-v2.json.gz",part:"kyoto-c3-a3",city:"kyoto",pk:0,ll:[135.84667,35.12667,135.88111,35.16000]},{id:"kyoto-c3-b3",url:"city-kyoto-v2.json.gz",part:"kyoto-c3-b3",city:"kyoto",pk:0,ll:[135.88111,35.12667,135.91556,35.16000]},{id:"kyoto-c1-c1",url:"city-kyoto-v2.json.gz",part:"kyoto-c1-c1",city:"kyoto",pk:0,ll:[135.91556,34.86000,135.95000,34.89333]},{id:"kyoto-c1-c2",url:"city-kyoto-v2.json.gz",part:"kyoto-c1-c2",city:"kyoto",pk:0,ll:[135.91556,34.89333,135.95000,34.92667]},{id:"kyoto-c1-c3",url:"city-kyoto-v2.json.gz",part:"kyoto-c1-c3",city:"kyoto",pk:0,ll:[135.91556,34.92667,135.95000,34.96000]},{id:"kyoto-c2-c1",url:"city-kyoto-v2.json.gz",part:"kyoto-c2-c1",city:"kyoto",pk:0,ll:[135.91556,34.96000,135.95000,34.99333]},{id:"kyoto-c2-c2",url:"city-kyoto-v2.json.gz",part:"kyoto-c2-c2",city:"kyoto",pk:0,ll:[135.91556,34.99333,135.95000,35.02667]},{id:"kyoto-c2-c3",url:"city-kyoto-v2.json.gz",part:"kyoto-c2-c3",city:"kyoto",pk:0,ll:[135.91556,35.02667,135.95000,35.06000]},{id:"kyoto-c3-c1",url:"city-kyoto-v2.json.gz",part:"kyoto-c3-c1",city:"kyoto",pk:0,ll:[135.91556,35.06000,135.95000,35.09333]},{id:"kyoto-c3-c2",url:"city-kyoto-v2.json.gz",part:"kyoto-c3-c2",city:"kyoto",pk:0,ll:[135.91556,35.09333,135.95000,35.12667]},{id:"kyoto-c3-c3",url:"city-kyoto-v2.json.gz",part:"kyoto-c3-c3",city:"kyoto",pk:0,ll:[135.91556,35.12667,135.95000,35.16000]}];
 for(const t of CITY_TILES){const a=P(t.ll[0],t.ll[3]),b=P(t.ll[2],t.ll[1]);t.wb=[a[0],a[1],b[0],b[1]];t.st=0;t.cid=t.city||t.id}
 /* a city split into tiles (Kyoto) fades only at the outer edge of the whole city, never between its tiles */
 for(const t of CITY_TILES){const g=CITY_TILES.filter(u=>u.cid===t.cid);t.ob=[Math.min(...g.map(u=>u.wb[0])),Math.min(...g.map(u=>u.wb[1])),Math.max(...g.map(u=>u.wb[2])),Math.max(...g.map(u=>u.wb[3]))]}
@@ -2028,7 +2029,7 @@ void main(){vec2 w=uW0+uWM*(vec2(gl_FragCoord.x,uH-gl_FragCoord.y)/uDpr);float c
  dotV3:`#version 300 es
 layout(location=0) in vec2 aP;layout(location=2) in float aH;layout(location=3) in float aR;layout(location=4) in float aC;
 layout(location=5) in float aRp;layout(location=6) in float aCp;layout(location=7) in float aBp;layout(location=8) in float aJ;
-uniform mat4 uVP;uniform vec3 uO,uE;uniform float uZs,uDpr,uF,uNear,uBias,uZa,uZb,uJit,uD,uKd,uLb,uZ,uTf,uBt,uSP,uPs,uPm;uniform vec2 uRes;uniform vec4 uClip;uniform vec3 uFog;uniform vec4 uCity;uniform float uCA;uniform vec4 uCT[24];uniform int uCN;
+uniform mat4 uVP;uniform vec3 uO,uE;uniform float uZs,uDpr,uF,uNear,uBias,uZa,uZb,uJit,uD,uKd,uLb,uZ,uTf,uBt,uSP,uPs,uPm;uniform vec2 uRes;uniform vec4 uClip;uniform vec3 uFog;uniform vec4 uCity;uniform float uCA;uniform vec4 uCT[24];uniform int uCN;uniform sampler2D uCM;uniform int uCMode,uPk;uniform vec4 uCMB;
 flat out int vC;flat out int vCp;out float vA;out float vT;out float vHf;out float vR;
 ${DOTCOM}${DOTFX}
 void main(){vec2 p=aP*(1./128.);int ci=int(aC+.5),cp=int(aCp+.5);vC=ci;vCp=cp;vT=1.;vX=vec4(0.);vMul=1.;float aB=mod(aBp,16.);
@@ -2051,7 +2052,9 @@ void main(){vec2 p=aP*(1./128.);int ci=int(aC+.5),cp=int(aCp+.5);vC=ci;vCp=cp;vT
  if(rd<.6){al*=rd*rd/.36;rp=.6/uDpr;}
  vR=rp;vHf=rp+.75/uDpr;gl_PointSize=min(2.*vHf*uDpr*uPs,uPm);
  if(uCA>0.){float ce=min(min(w.x-uCity.x,uCity.z-w.x),min(w.y-uCity.y,uCity.w-w.y));
-  if(ce>0.){bool cov=false;for(int i=0;i<24;i++){if(i>=uCN)break;vec4 b=uCT[i];if(w.x>=b.x&&w.x<=b.z&&w.y>=b.y&&w.y<=b.w){cov=true;break;}}if(cov)al*=1.-uCA*smoothstep(0.,.23,ce);}}
+  if(ce>0.&&uCMode==1){vec4 mk=textureLod(uCM,(w.xy-uCMB.xy)/(uCMB.zw-uCMB.xy),0.);int pk=int(mk.g*255.+.5);
+   if(pk<31&&((uPk>>pk)&1)==1)al*=1.-uCA*smoothstep(0.,.23,ce)*mk.r;}
+  else if(ce>0.){bool cov=false;for(int i=0;i<24;i++){if(i>=uCN)break;vec4 b=uCT[i];if(w.x>=b.x&&w.x<=b.z&&w.y>=b.y&&w.y<=b.w){cov=true;break;}}if(cov)al*=1.-uCA*smoothstep(0.,.23,ce);}}
  vA=(1.-smoothstep(uFog.x,uFog.y,c.w)*.92)*al;
  float vb=max(uNear,c.w*(1.-uBias));c.z=(uZa*vb+uZb)/vb*c.w;gl_Position=c;}`,
  dotF3:`#version 300 es
@@ -2221,7 +2224,9 @@ const GL={gl:null,lost:false,
   const use=P=>{const u=P.u;gl.useProgram(P.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform2f(u.uRes,W,H);gl.uniform1f(u.uDpr,DPR);gl.uniform1f(u.uZs,m.zs);gl.uniform1f(u.uF,m.F);gl.uniform1f(u.uNear,near);
     gl.uniform1f(u.uBias,.006);gl.uniform1f(u.uJit,.8*smooth01((cam.tilt-.55)/.6));gl.uniform1f(u.uZa,za);gl.uniform1f(u.uZb,zb);gl.uniform3f(u.uFog,m.fs,m.fe,0);if(u.uPal)gl.uniform3fv(u.uPal,this.P);
     gl.uniform3f(u.uE,m.ex,m.ey,m.ez);gl.uniform1f(u.uD,m.D);gl.uniformMatrix2fv(u.uMi,false,[1,0,0,1]);gl.uniform1f(u.uPs,P===this.pGlow3?.5:1);gl.uniform1f(u.uPm,this.pm);gl.uniform1f(u.uKd,KD3);gl.uniform1f(u.uLb,LB3);gl.uniform1f(u.uSP,LT_SP);gl.uniform1f(u.uGrl,GRL);
-    gl.uniform1f(u.uEx,EX());gl.uniform1f(u.uSl,smooth01((cam.tilt-.35)/.6));this.fxU(u);if(u.uCity){const cb=CITYL.fadeBox();gl.uniform4f(u.uCity,cb[0],cb[1],cb[2],cb[3]);gl.uniform1f(u.uCA,P===this.pGlow3?cb[4]*CK.vis:cb[4]);if(u.uCT){gl.uniform4fv(u.uCT,cb[5]);gl.uniform1i(u.uCN,cb[6])}}};
+    gl.uniform1f(u.uEx,EX());gl.uniform1f(u.uSl,smooth01((cam.tilt-.35)/.6));this.fxU(u);if(u.uCity){const cb=CITYL.fadeBox();gl.uniform4f(u.uCity,cb[0],cb[1],cb[2],cb[3]);gl.uniform1f(u.uCA,P===this.pGlow3?cb[4]*CK.vis:cb[4]);if(u.uCT){gl.uniform4fv(u.uCT,cb[5]);gl.uniform1i(u.uCN,cb[6])}
+  if(u.uCM){const mb=cb[10];gl.activeTexture(gl.TEXTURE6);gl.bindTexture(gl.TEXTURE_2D,cb[7]||CITYL.white(gl));gl.uniform1i(u.uCM,6);gl.activeTexture(gl.TEXTURE0);
+   gl.uniform1i(u.uCMode,cb[8]);gl.uniform1i(u.uPk,cb[9]);gl.uniform4f(u.uCMB,mb[0],mb[1],mb[2],mb[3])}}};
   const pass=(P,r)=>{const u=P.u;gl.uniform1f(u.uGp,r===1?1:0);for(const it of list){const b=it[0];if(!b.n[r])continue;const k=it[3]/(LT_N*LT_SP),cl=it[5];
     gl.uniform3f(u.uO,it[1],it[2],k);gl.uniform1f(u.uA,it[4]);gl.uniform1f(u.uZ,it[8]);gl.uniform1f(u.uTf,it[9]);gl.uniform1f(u.uBt,it[10]);
     if(cl)gl.uniform4f(u.uClip,cl[0],cl[1],cl[2],cl[3]);else gl.uniform4f(u.uClip,-1,-1,1e6,1e6);
@@ -2236,8 +2241,8 @@ const GL={gl:null,lost:false,
     gl.uniform2f(C.u.uInv,1/GLC.width,1/GLC.height);gl.bindVertexArray(this.vEmpty);gl.drawArrays(gl.TRIANGLES,0,3);gl.activeTexture(gl.TEXTURE0);gl.enable(gl.DEPTH_TEST);use(this.pDot3)}
   if(this.skip!=="dots")pass(this.pDot3,2);CITYL.glow(gl,m);gl.disable(gl.DEPTH_TEST);gl.depthMask(true);gl.bindVertexArray(null)}};
 /* ================= city detail: 3D buildings =================
-   A city is a set of tiles (Akasaka: one file, city-akasaka-v2.json; Kyoto: 20 tiles of about 2 x 2 km,
-   packed in one file, city-kyoto-v1.json), fetched the first time you come near and then kept by the service worker.
+   A city is a set of tiles (Akasaka: one file, city-akasaka-v2.json; the Kyoto area: 79 tiles of about 3 x 3.5 km
+   in one gzip file, city-kyoto-v2.json.gz), fetched the first time you come near and then kept by the service worker.
    A tiled city fades only at its outer edge, and the dots give way under every loaded tile. Kyoto adds floating box
    pieces (pagodas, gates, halls, the torii, Kyoto Tower), far-detail blocks (cityLod*), lanterns and river streaks. Each tile holds the real OpenStreetMap buildings: the near-rectangles (about 4 in 5)
    as rotated boxes sharing one box shape (36 bytes each on the GPU), the rest with their true outlines; landmark
@@ -2294,8 +2299,8 @@ void main(){float seed=vK.x,kind=vK.y,H=vK.z;vec3 c;
 layout(location=0) in vec3 aP;layout(location=1) in vec2 aT;uniform mat4 uVP;uniform float uZs,uMpu;out vec2 vT;out vec2 vWp;out float vW;
 void main(){vT=aT;vWp=aP.xy;vec4 cp=uVP*vec4(aP.xy,aP.z*uZs+.6/uMpu,1.);gl_Position=cp;vW=cp.w;}`,
  gF:`#version 300 es
-precision highp float;in vec2 vT;in vec2 vWp;in float vW;out vec4 o;uniform sampler2D uTex;uniform float uA,uRiv;uniform vec4 uBox;uniform vec3 uHz,uFog;
-void main(){float ed=min(min(vWp.x-uBox.x,uBox.z-vWp.x),min(vWp.y-uBox.y,uBox.w-vWp.y)),a=uA*smoothstep(0.,.23,ed);if(a<=0.)discard;
+precision highp float;in vec2 vT;in vec2 vWp;in float vW;out vec4 o;uniform sampler2D uTex,uCM;uniform float uA,uRiv;uniform int uCMode;uniform vec4 uBox,uCMB;uniform vec3 uHz,uFog;
+void main(){float ed=min(min(vWp.x-uBox.x,uBox.z-vWp.x),min(vWp.y-uBox.y,uBox.w-vWp.y)),a=uA*smoothstep(0.,.23,ed);if(uCMode==1)a*=texture(uCM,(vWp-uCMB.xy)/(uCMB.zw-uCMB.xy)).r;if(a<=0.)discard;
  vec3 c=texture(uTex,vT).rgb*1.55;
  if(uRiv>0.&&c.b>.16&&c.b>c.r*2.8){vec2 lp=(vWp-uBox.xy)*1111.95;float rp=lp.y*.9+sin(lp.x*.35)*2.,fw=fwidth(rp);c+=uRiv*(vec3(.005,.012,.022)*sin(rp)*(1.-smoothstep(.4,1.6,fw))+vec3(.012,.02,.032));}
  c=mix(c,uHz,smoothstep(uFog.x,uFog.y,vW)*uFog.z);o=vec4(c*a,a);}`,
@@ -2331,14 +2336,23 @@ const CITYL={progs:null,drawn:false,fpsEl:null,fpsT:0,
  fadeBox(){let best=null,bd=1e9;for(const t of CITY_TILES){if(t.st!==3)continue;const b=t.wb,d=Math.hypot(Math.max(b[0]-cam.x,0,cam.x-b[2]),Math.max(b[1]-cam.y,0,cam.y-b[3]));if(d<bd){bd=d;best=t}}
    const L=this.fbL||(this.fbL=new Float32Array(96));let n=0;
    if(best&&cityOn())for(const t of CITY_TILES)if(t.st===3&&t.cid===best.cid&&n<24){L.set(t.wb,n*4);n++}
-   return best&&cityOn()?[best.ob[0],best.ob[1],best.ob[2],best.ob[3],1,L,n]:[0,0,0,0,0,L,0]},
+   const cm=best&&this.cm&&this.cm[best.cid];let pk=0;
+   if(cm&&cm.tex){const all=new Map();for(const t of CITY_TILES)if(t.cid===best.cid&&t.pk!==undefined)all.set(t.pk,(all.get(t.pk)??true)&&t.st===3);for(const[k,v]of all)if(v)pk|=1<<k}
+   const mm=cm&&cm.tex?1:0,mb=cm&&cm.tex?cm.box:[0,0,1,1];
+   return best&&cityOn()?[best.ob[0],best.ob[1],best.ob[2],best.ob[3],1,L,n,mm?cm.tex:null,mm,pk,mb]:[0,0,0,0,0,L,0,null,0,0,mb]},
+ white(gl){if(!this.wt||this.wtGl!==gl){this.wtGl=gl;this.wt=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,this.wt);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([255,0,0,255]))}return this.wt},
+ /* a masked city: R = how much city ground shows (soft edges), G = which file covers it */
+ mask(j,cid){if(!j.mask||!j.mll)return;this.cm=this.cm||{};if(this.cm[cid])return;const a=P(j.mll[0],j.mll[3]),b=P(j.mll[2],j.mll[1]),rec=this.cm[cid]={box:[a[0],a[1],b[0],b[1]],tex:null,src:j.mask};this.maskTex(rec)},
+ maskTex(rec){const im=new Image();im.onload=()=>{const gl=GL.gl;if(!gl||GL.lost)return;const tx=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tx);gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);
+   gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,im);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);rec.tex=tx;invalidate()};im.src=rec.src},
  want(m){const now=Date.now();for(const t of CITY_TILES){if(t.st>0||(t.st<0&&now<t.retry))continue;const b=t.wb;
    if(boxDist(m,b[0],b[1],0,b[2],b[3],.3)>Math.max(m.D*8,1.5))continue;
    if(t.part){this.pack(t,now);continue}
    t.st=1;fetch(t.url).then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(j=>{t.data=j;t.st=2;invalidate()}).catch(()=>{t.st=-1;t.retry=Date.now()+30000})}},
- /* a city shipped as one file (Kyoto): the first tile wanted fetches it, and every tile of it takes its part */
+ /* a city shipped as one file (Kyoto, gzip-compressed and unpacked here): the first tile wanted fetches it, and every tile of it takes its part */
  pack(t,now){const g=CITY_TILES.filter(u=>u===t||u.url===t.url&&(u.st===0||u.st<0&&now>=u.retry));for(const u of g)u.st=1;
-   fetch(t.url).then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(j=>{for(const u of g){const d=j.tiles&&j.tiles[u.part];if(d){u.data=d;u.st=2}else{u.st=-1;u.retry=Date.now()+6e5}}invalidate()})
+   fetch(t.url).then(r=>{if(!r.ok)throw new Error(r.status);return r.arrayBuffer()}).then(cityUnpack).then(j=>{this.mask(j,t.cid);for(const u of g){const d=j.tiles&&j.tiles[u.part];if(d){u.data=d;u.st=2}else{u.st=-1;u.retry=Date.now()+6e5}}invalidate()})
    .catch(()=>{for(const u of g){u.st=-1;u.retry=Date.now()+30000}})},
  init(gl){if(this.progs)return true;
   try{const sh=(ty,s)=>{const o=gl.createShader(ty);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(o));return o};
@@ -2350,9 +2364,9 @@ const CITYL={progs:null,drawn:false,fpsEl:null,fpsT:0,
     quad([1,-1,0],[1,1,0],[1,1,1],[1,-1,1],0);quad([-1,1,0],[-1,-1,0],[-1,-1,1],[-1,1,1],1);quad([1,1,0],[-1,1,0],[-1,1,1],[1,1,1],2);
     quad([-1,-1,0],[1,-1,0],[1,-1,1],[-1,-1,1],3);quad([-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1],4);
     this.boxBuf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,this.boxBuf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(v),gl.STATIC_DRAW);
-    if(!this.hooked){this.hooked=true;GLC.addEventListener("webglcontextrestored",()=>{CITYL.progs=null;for(const t of CITY_TILES)if(t.st===3)t.st=t.data?2:0})}
+    if(!this.hooked){this.hooked=true;GLC.addEventListener("webglcontextrestored",()=>{CITYL.progs=null;CITYL.wt=null;CITYL.nChunks=0;CITYL.nHi=0;CITYL.cq=[];if(CITYL.cm)for(const k in CITYL.cm){CITYL.cm[k].tex=null;CITYL.maskTex(CITYL.cm[k])}for(const t of CITY_TILES)if(t.st===3)t.st=t.data?2:0})}
     return true}catch(e){console.warn("city layer off:",e);SET.city=false;return false}},
- build(gl,t){const d=t.data,K=COSL*SCALE,wx=x=>(x/d.kx+d.lon0-129)*K,wy=y=>(46-(y/d.ky+d.lat0))*SCALE,MX=d.kx/K,MY=d.ky/SCALE;
+ build(gl,t){if(t.data.lazy&&!t.sub)return cityBuildLazy(gl,t);const d=t.data,K=COSL*SCALE,wx=x=>(x/d.kx+d.lon0-129)*K,wy=y=>(46-(y/d.ky+d.lat0))*SCALE,MX=d.kx/K,MY=d.ky/SCALE;
   let sd=987654321;const rnd=()=>{sd=(sd*16807)%2147483647;return sd/2147483647};
   const g={chunks:[],labels:[],lv:null,riv:!!d.riv},b=t.wb,LOD=!!d.lod;
   /* generated buildings: one instance each, sorted into ~600 m chunks so the ones off screen are skipped */
@@ -2437,13 +2451,19 @@ const CITYL={progs:null,drawn:false,fpsEl:null,fpsT:0,
  solid(gl,m,VP,FG,HZ){this.drawn=false;if(!cityOn())return;if(m.D*M_PER_U<150000)this.want(m);
   for(const t of CITY_TILES)if(t.st===2&&GQ8&&this.init(gl)){try{t.g=this.build(gl,t);t.st=3;if(t.data.lod)t.data=null}catch(e){console.warn(e);t.st=-1;t.retry=Date.now()+6e5}
     if(CITY_TILES.some(u=>u.st===2))invalidate();break}
-  const Pg=this.progs;if(!Pg)return;let any=false;
+  const Pg=this.progs;if(!Pg)return;let any=false;cityChunkWork(gl);
   const set=(P,t)=>{const u=P.u;gl.useProgram(P.p);gl.uniformMatrix4fv(u.uVP,false,VP);if(u.uZs)gl.uniform1f(u.uZs,m.zs);if(u.uMpu)gl.uniform1f(u.uMpu,M_PER_U);
     if(u.uBox)gl.uniform4f(u.uBox,t.ob[0],t.ob[1],t.ob[2],t.ob[3]);if(u.uRise)gl.uniform1f(u.uRise,1);if(u.uA)gl.uniform1f(u.uA,1);if(u.uDm)gl.uniform1f(u.uDm,CK.dm);if(u.uFar)gl.uniform1f(u.uFar,cs01((CK.dm-3000)/20000));if(u.uHz)gl.uniform3f(u.uHz,HZ[0],HZ[1],HZ[2]);
     if(u.uFog)gl.uniform3f(u.uFog,FG[0],FG[1],FG[2]);if(u.uDet)gl.uniform1f(u.uDet,CK.q>1?1:CK.q>0?.5:.3);if(u.uM)gl.uniform2f(u.uM,t.g.MX,t.g.MY);if(u.uPS)gl.uniform1f(u.uPS,m.F*DPR);if(u.uDpr)gl.uniform1f(u.uDpr,DPR);if(u.uRiv)gl.uniform1f(u.uRiv,t.g.riv&&SET.river!==false?1:0)};
   gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
   for(const t of CITY_TILES){if(t.st!==3)continue;const b=t.wb,g=t.g;if(!boxIn(m,b[0],b[1],-.1,b[2],b[3],(g.hmax+60)/M_PER_U+.4))continue;any=true;
-    if(g.tex){gl.depthMask(false);set(Pg.g,t);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,g.tex);gl.uniform1i(Pg.g.u.uTex,0);gl.bindVertexArray(g.gv);gl.drawElements(gl.TRIANGLES,g.gn,gl.UNSIGNED_SHORT,0)}
+    if(g.lazy)cityHiGround(gl,m,t,g);
+    if(g.tex){gl.depthMask(false);set(Pg.g,t);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,g.hi||g.tex);gl.uniform1i(Pg.g.u.uTex,0);
+      {const cm=this.cm&&this.cm[t.cid],on=cm&&cm.tex?1:0;gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,on?cm.tex:this.white(gl));gl.uniform1i(Pg.g.u.uCM,1);gl.activeTexture(gl.TEXTURE0);
+       gl.uniform1i(Pg.g.u.uCMode,on);if(on)gl.uniform4f(Pg.g.u.uCMB,cm.box[0],cm.box[1],cm.box[2],cm.box[3])}
+      gl.bindVertexArray(g.gv);gl.drawElements(gl.TRIANGLES,g.gn,gl.UNSIGNED_SHORT,0)}
+    if(g.lazy){cityLazyDraw(gl,m,t,g,set,Pg);gl.bindVertexArray(g.lm);gl.drawArrays(gl.TRIANGLES,0,g.lmN);
+      if(CK.q>0&&CK.dm<9000){set(Pg.p,t);gl.bindVertexArray(g.trees.v);gl.drawArrays(gl.POINTS,0,g.trees.n)}continue}
     if(g.lod)cityLodPick(m,g);const lv=g.lv;
     gl.depthMask(true);set(Pg.b,t);gl.bindVertexArray(g.vao);gl.bindBuffer(gl.ARRAY_BUFFER,g.ibuf);const far=1e9;
     for(const c of g.chunks){if(lv&&c.key>=0&&lv[c.key])continue;const zb=c.b0*m.zs-40/M_PER_U,zt=c.b1*m.zs+c.h/M_PER_U;if(!boxIn(m,c.x0,c.y0,zb,c.x1,c.y1,zt)||boxDist(m,c.x0,c.y0,zb,c.x1,c.y1,zt)>far)continue;const o=c.off*36;
@@ -2459,6 +2479,77 @@ const CITYL={progs:null,drawn:false,fpsEl:null,fpsT:0,
   gl.uniformMatrix4fv(u.uVP,false,this.vp);gl.uniform1f(u.uZs,m.zs);gl.uniform1f(u.uMpu,M_PER_U);gl.uniform1f(u.uA,1);gl.uniform1f(u.uLan,SET.lantern!==false?1:0);gl.uniform1f(u.uRiv,SET.river!==false?1:0);gl.uniform1f(u.uDm,CK.dm);gl.uniform1f(u.uPS,m.F*DPR);gl.uniform1f(u.uDpr,DPR);
   for(const t of CITY_TILES){if(t.st!==3)continue;gl.uniform4f(u.uBox,t.ob[0],t.ob[1],t.ob[2],t.ob[3]);gl.bindVertexArray(t.g.glow.v);gl.drawArrays(gl.POINTS,0,t.g.glow.n)}
   gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.disable(gl.DEPTH_TEST);gl.bindVertexArray(null)}};
+/* big-area tiles (the Kyoto area, marked lazy): the tile's landmarks, lights, trees, labels and a small ground are built
+   at once, and every ~550 m chunk gets its far-detail blocks. A chunk's real buildings are built only when it is near
+   enough to need them (a few each frame, nearest first; the blocks stand in meanwhile) and let go again once it has
+   been far for a while, so memory follows the camera instead of the size of the area. The full-size ground texture
+   is likewise loaded only for tiles near the camera. */
+const CITY_HASH=i=>{const x=Math.sin(i*12.9898+.7)*43758.5453;return x-Math.floor(x)};
+function cityBuildLazy(gl,t){const d=t.data,K=COSL*SCALE,wx=x=>(x/d.kx+d.lon0-129)*K,wy=y=>(46-(y/d.ky+d.lat0))*SCALE,MX=d.kx/K,MY=d.ky/SCALE,B=d.box,b=t.wb;
+  /* landmark pieces (kind 3+) are built now with everything small; the ordinary buildings wait for their chunk */
+  const lb=[];for(let o=0;o<B.length;o+=7)if(B[o+6]%10>=3)for(let k=0;k<7;k++)lb.push(B[o+k]);
+  const g=CITYL.build(gl,{wb:t.wb,sub:1,data:Object.assign({},d,{box:lb,poly:[],lod:0,ground:d.glo||d.ground})});
+  g.lazy=true;g.src=d;g.wx=wx;g.wy=wy;g.hiSrc=d.ground;g.ck=[];g.nb=0;
+  const NX=g.NX,NY=g.NY,cell=(x,y)=>clamp(Math.floor((y-b[1])/(b[3]-b[1])*NY),0,NY-1)*NX+clamp(Math.floor((x-b[0])/(b[2]-b[0])*NX),0,NX-1);
+  for(let k=0;k<NX*NY;k++)g.ck.push({bi:[],pi:[],x0:1e9,y0:1e9,x1:-1e9,y1:-1e9,b0:1e9,b1:-1e9,h:0,on:false,last:0});
+  const grow=(c,x,y,r,base,h)=>{if(x-r<c.x0)c.x0=x-r;if(x+r>c.x1)c.x1=x+r;if(y-r<c.y0)c.y0=y-r;if(y+r>c.y1)c.y1=y+r;if(base<c.b0)c.b0=base;if(base>c.b1)c.b1=base;if(h>c.h)c.h=h};
+  for(let o=0;o<B.length;o+=7){if(B[o+6]%10>=3)continue;const x=wx(B[o]/10),y=wy(B[o+1]/10),hw=B[o+2]/10,hd=B[o+3]/10,h=B[o+5]/10,key=cell(x,y),c=g.ck[key];
+    c.bi.push(o);grow(c,x,y,Math.hypot(hw,hd)/Math.min(MX,MY),gh(x,y),h);cityLodAdd(g,key,B[o]/10,B[o+1]/10,4*hw*hd,h,B[o+6]%10)}
+  const PL=d.poly||[];
+  for(let pi=0;pi<PL.length;pi++){const r=PL[pi],h=r[1]/10;let n=0,cx=0,cy=0,ar=0,rr=0;
+    for(let i=2;i+1<r.length;i+=2){const ax=r[i]/10,ay=r[i+1]/10,j=i+2<r.length?i+2:2,bx=r[j]/10,by=r[j+1]/10;cx+=ax;cy+=ay;n++;ar+=ax*by-bx*ay}
+    if(n<3)continue;cx/=n;cy/=n;for(let i=2;i+1<r.length;i+=2)rr=Math.max(rr,Math.hypot(r[i]/10-cx,r[i+1]/10-cy));
+    const x=wx(cx),y=wy(cy),key=cell(x,y),c=g.ck[key];c.pi.push(pi);grow(c,x,y,rr/Math.min(MX,MY),gh(x,y),h);cityLodAdd(g,key,cx,cy,Math.abs(ar)/2,h,r[0])}
+  let sd=24680;const rnd=()=>{sd=(sd*16807)%2147483647;return sd/2147483647};
+  cityLodBuild(gl,g,t,wx,wy,rnd);if(!g.lk){g.lk=[];g.lv=new Uint8Array(0);g.lod=[{R:new Map()},{R:new Map()}]}
+  g.src={box:Int32Array.from(B),poly:PL};return g}   /* only what the chunks need is kept; the rest of the tile data is let go */
+function cityChunkBuild(gl,t,g,key){const c=g.ck[key],d=g.src,B=d.box,wx=g.wx,wy=g.wy;
+  if(c.bi.length){const I=new Float32Array(c.bi.length*9);let k=0;
+    for(const o of c.bi){const x=wx(B[o]/10),y=wy(B[o+1]/10);I.set([x,y,B[o+2]/10,B[o+3]/10,B[o+4]/1e4,B[o+5]/10,gh(x,y),CITY_HASH(o)*97.3,B[o+6]],k*9);k++}
+    c.bb=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,c.bb);gl.bufferData(gl.ARRAY_BUFFER,I,gl.STATIC_DRAW);
+    c.bv=gl.createVertexArray();gl.bindVertexArray(c.bv);gl.bindBuffer(gl.ARRAY_BUFFER,CITYL.boxBuf);
+    gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,16,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,1,gl.FLOAT,false,16,12);
+    gl.bindBuffer(gl.ARRAY_BUFFER,c.bb);for(const q of[2,3,4]){gl.enableVertexAttribArray(q);gl.vertexAttribDivisor(q,1)}
+    gl.vertexAttribPointer(2,4,gl.FLOAT,false,36,0);gl.vertexAttribPointer(3,4,gl.FLOAT,false,36,16);gl.vertexAttribPointer(4,1,gl.FLOAT,false,36,32);gl.bindVertexArray(null);c.bn=c.bi.length}
+  if(c.pi.length){const A=[];
+    for(const pi of c.pi){const r=d.poly[pi],kind=r[0],h=r[1]/10,p=[];for(let i=2;i+1<r.length;i+=2)p.push([r[i]/10,r[i+1]/10]);if(p.length<3)continue;
+      let ar=0;for(let i=0;i<p.length;i++){const q=p[(i+1)%p.length];ar+=p[i][0]*q[1]-q[0]*p[i][1]}if(ar<0)p.reverse();
+      let cx=0,cy=0;for(const q of p){cx+=q[0];cy+=q[1]}cx/=p.length;cy/=p.length;const base=gh(wx(cx),wy(cy)),s=CITY_HASH(pi+.5)*97.3;
+      const put=(x,y,lz,uu,nx,ny)=>A.push(wx(x),wy(y),lz,uu,nx,ny,h,base,s,kind);
+      let u=0;for(let i=0;i<p.length;i++){const a=p[i],q=p[(i+1)%p.length],dx=q[0]-a[0],dy=q[1]-a[1],L=Math.hypot(dx,dy)||1e-6,nx=dy/L,ny=-dx/L,u1=u+L;
+        put(a[0],a[1],0,u,nx,ny);put(q[0],q[1],0,u1,nx,ny);put(q[0],q[1],1,u1,nx,ny);put(a[0],a[1],0,u,nx,ny);put(q[0],q[1],1,u1,nx,ny);put(a[0],a[1],1,u,nx,ny);u=u1}
+      for(const i of cityEar(p))put(p[i][0],p[i][1],1,p[i][0],0,0)}
+    c.pv=gl.createVertexArray();gl.bindVertexArray(c.pv);c.pb=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,c.pb);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(A),gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,40,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,4,gl.FLOAT,false,40,12);
+    gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,3,gl.FLOAT,false,40,28);gl.bindVertexArray(null);c.pn=A.length/10}
+  c.on=true;c.last=performance.now();CITYL.nChunks=(CITYL.nChunks||0)+1}
+function cityChunkFree(gl,c){if(!c.on)return;if(c.bb){gl.deleteBuffer(c.bb);gl.deleteVertexArray(c.bv)}if(c.pb){gl.deleteBuffer(c.pb);gl.deleteVertexArray(c.pv)}
+  c.bb=c.bv=c.pb=c.pv=null;c.bn=c.pn=0;c.on=false;CITYL.nChunks--}
+/* each frame: build the chunks the last frame asked for (nearest first, ~5 ms), and now and then let far ones go */
+function cityChunkWork(gl){const Q=CITYL.cq||(CITYL.cq=[]),now=performance.now();
+  if(Q.length){Q.sort((a,b)=>a[2]-b[2]);const t0=now;for(const[t,key]of Q){if(t.st!==3||!t.g||t.g.ck[key].on)continue;cityChunkBuild(gl,t,t.g,key);if(performance.now()-t0>5)break}Q.length=0;invalidate()}
+  if(now-(CITYL.gcT||0)>3000){CITYL.gcT=now;const on=[];
+    for(const t of CITY_TILES)if(t.st===3&&t.g&&t.g.lazy)for(const c of t.g.ck)if(c.on){if(now-c.last>20000)cityChunkFree(gl,c);else on.push(c)}
+    if(on.length>900){on.sort((a,b)=>a.last-b.last);for(let i=0;i<on.length-900;i++)cityChunkFree(gl,on[i])}}}
+function cityLazyDraw(gl,m,t,g,set,Pg){cityLodPick(m,g);const lv=g.lv,now=performance.now();
+  set(Pg.b,t);gl.bindVertexArray(g.vao);gl.bindBuffer(gl.ARRAY_BUFFER,g.ibuf);
+  for(const c of g.chunks){const zb=c.b0*m.zs-40/M_PER_U,zt=c.b1*m.zs+c.h/M_PER_U;if(!boxIn(m,c.x0,c.y0,zb,c.x1,c.y1,zt))continue;const o=c.off*36;   /* landmark pieces */
+    gl.vertexAttribPointer(2,4,gl.FLOAT,false,36,o);gl.vertexAttribPointer(3,4,gl.FLOAT,false,36,o+16);gl.vertexAttribPointer(4,1,gl.FLOAT,false,36,o+32);gl.drawArraysInstanced(gl.TRIANGLES,0,30,c.n)}
+  for(let key=0;key<g.ck.length;key++){if(lv[key]!==0)continue;const c=g.ck[key];if(!c.bi.length&&!c.pi.length)continue;
+    const zb=c.b0*m.zs-40/M_PER_U,zt=c.b1*m.zs+c.h/M_PER_U;if(!boxIn(m,c.x0,c.y0,zb,c.x1,c.y1,zt))continue;
+    if(!c.on){CITYL.cq.push([t,key,boxDist(m,c.x0,c.y0,zb,c.x1,c.y1,zt)]);lv[key]=1;continue}   /* not built yet: its blocks stand in */
+    c.last=now;if(c.bn){gl.bindVertexArray(c.bv);gl.drawArraysInstanced(gl.TRIANGLES,0,30,c.bn)}}
+  cityLodDraw(gl,m,g);
+  set(Pg.l,t);
+  for(let key=0;key<g.ck.length;key++){const c=g.ck[key];if(lv[key]!==0||!c.on||!c.pn)continue;const zb=c.b0*m.zs-40/M_PER_U,zt=c.b1*m.zs+c.h/M_PER_U;
+    if(!boxIn(m,c.x0,c.y0,zb,c.x1,c.y1,zt))continue;gl.bindVertexArray(c.pv);gl.drawArrays(gl.TRIANGLES,0,c.pn)}}
+/* the full-size ground only for tiles near the camera (at most 8); the small one everywhere else */
+function cityHiGround(gl,m,t,g){const b=t.wb,dk=boxDist(m,b[0],b[1],0,b[2],b[3],.01)*M_PER_U;
+  if(dk<5000&&!g.hi&&!g.hiLoading&&g.hiSrc&&(CITYL.nHi||0)<8){g.hiLoading=true;const im=new Image();
+    im.onload=()=>{g.hiLoading=false;if(GL.lost||t.g!==g)return;const tx=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tx);gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,im);gl.generateMipmap(gl.TEXTURE_2D);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);g.hi=tx;CITYL.nHi=(CITYL.nHi||0)+1;invalidate()};
+    im.onerror=()=>{g.hiLoading=false};im.src=g.hiSrc}
+  else if(dk>9000&&g.hi){gl.deleteTexture(g.hi);g.hi=null;CITYL.nHi--}}
 /* far detail for big cities (Kyoto; tiles marked lod). Each ~550 m chunk is drawn at one of three levels, chosen
    every frame by how big its buildings look on screen: 0 every real building; 1 the buildings merged into 24 m blocks;
    2 merged into 64 m blocks. A block keeps its buildings' total footprint, their height (root-mean-square, so the
@@ -3108,7 +3199,7 @@ function buildSettings(){
     <h4>City</h4>
     <label class="tg"><input type="checkbox" data-k="city" ${SET.city!==false?"checked":""}><span>3D buildings · Akasaka, Kyoto</span></label>
     <label class="tg"><input type="checkbox" data-k="lantern" ${SET.lantern!==false?"checked":""}><span>Paper lanterns · Gion, Pontochō</span></label>
-    <label class="tg"><input type="checkbox" data-k="river" ${SET.river!==false?"checked":""}><span>Kamo River reflections</span></label>
+    <label class="tg"><input type="checkbox" data-k="river" ${SET.river!==false?"checked":""}><span>River and lake reflections</span></label>
     <label class="tg"><input type="checkbox" data-k="fps" ${SET.fps?"checked":""}><span>Show frame rate</span></label>
     <h4>Camera</h4><div class="seg"><button data-view="tilt" aria-pressed="${!P3ON()}">Tilt · 80°</button><button data-view="3d" aria-pressed="${P3ON()}" ${GLON||!(TW.ok||TW.failed)?"":"disabled style=\"opacity:.4\""}>3D camera</button></div>
     <p style="margin:6px 2px 0;font-size:11.5px;color:var(--muted)">${P3ON()?"Tilt right over with two fingers to stand on the ground and look across the hills.":"The flat map, tipped up to 80°."}</p></div>`;
