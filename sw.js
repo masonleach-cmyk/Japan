@@ -1,4 +1,4 @@
-const VERSION = "tabiji-v20";
+const VERSION = "tabiji-v21";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "apple-touch-icon.png", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", e => {
