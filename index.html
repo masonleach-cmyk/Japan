@@ -1222,8 +1222,11 @@ const cam={x:620,y:1050,s:.3,rot:0,tilt:.1,zm:0};
 const S_MIN=.18;let S_MAX=60,TILT_MAX=1.0;
 /* city tiles with 3D buildings (see the city detail section). CK: how near a city the camera is, how far terrain has
    eased toward true height (flat), how far the buildings have risen (vis), and the governor's quality level (q). */
-const CITY_TILES=[{id:"akasaka",url:"city-akasaka-v2.json",ll:[139.724,35.655,139.752,35.684]}];
-for(const t of CITY_TILES){const a=P(t.ll[0],t.ll[3]),b=P(t.ll[2],t.ll[1]);t.wb=[a[0],a[1],b[0],b[1]];t.st=0}
+const CITY_TILES=[{id:"akasaka",url:"city-akasaka-v2.json",ll:[139.724,35.655,139.752,35.684]},
+ {id:"kyoto-a1",url:"city-kyoto-v1.json",part:"kyoto-a1",city:"kyoto",ll:[135.72000,34.96000,135.74000,34.97800]},{id:"kyoto-a2",url:"city-kyoto-v1.json",part:"kyoto-a2",city:"kyoto",ll:[135.72000,34.97800,135.74000,34.99600]},{id:"kyoto-a3",url:"city-kyoto-v1.json",part:"kyoto-a3",city:"kyoto",ll:[135.72000,34.99600,135.74000,35.01400]},{id:"kyoto-a4",url:"city-kyoto-v1.json",part:"kyoto-a4",city:"kyoto",ll:[135.72000,35.01400,135.74000,35.03200]},{id:"kyoto-a5",url:"city-kyoto-v1.json",part:"kyoto-a5",city:"kyoto",ll:[135.72000,35.03200,135.74000,35.05000]},{id:"kyoto-b1",url:"city-kyoto-v1.json",part:"kyoto-b1",city:"kyoto",ll:[135.74000,34.96000,135.76000,34.97800]},{id:"kyoto-b2",url:"city-kyoto-v1.json",part:"kyoto-b2",city:"kyoto",ll:[135.74000,34.97800,135.76000,34.99600]},{id:"kyoto-b3",url:"city-kyoto-v1.json",part:"kyoto-b3",city:"kyoto",ll:[135.74000,34.99600,135.76000,35.01400]},{id:"kyoto-b4",url:"city-kyoto-v1.json",part:"kyoto-b4",city:"kyoto",ll:[135.74000,35.01400,135.76000,35.03200]},{id:"kyoto-b5",url:"city-kyoto-v1.json",part:"kyoto-b5",city:"kyoto",ll:[135.74000,35.03200,135.76000,35.05000]},{id:"kyoto-c1",url:"city-kyoto-v1.json",part:"kyoto-c1",city:"kyoto",ll:[135.76000,34.96000,135.78000,34.97800]},{id:"kyoto-c2",url:"city-kyoto-v1.json",part:"kyoto-c2",city:"kyoto",ll:[135.76000,34.97800,135.78000,34.99600]},{id:"kyoto-c3",url:"city-kyoto-v1.json",part:"kyoto-c3",city:"kyoto",ll:[135.76000,34.99600,135.78000,35.01400]},{id:"kyoto-c4",url:"city-kyoto-v1.json",part:"kyoto-c4",city:"kyoto",ll:[135.76000,35.01400,135.78000,35.03200]},{id:"kyoto-c5",url:"city-kyoto-v1.json",part:"kyoto-c5",city:"kyoto",ll:[135.76000,35.03200,135.78000,35.05000]},{id:"kyoto-d1",url:"city-kyoto-v1.json",part:"kyoto-d1",city:"kyoto",ll:[135.78000,34.96000,135.80000,34.97800]},{id:"kyoto-d2",url:"city-kyoto-v1.json",part:"kyoto-d2",city:"kyoto",ll:[135.78000,34.97800,135.80000,34.99600]},{id:"kyoto-d3",url:"city-kyoto-v1.json",part:"kyoto-d3",city:"kyoto",ll:[135.78000,34.99600,135.80000,35.01400]},{id:"kyoto-d4",url:"city-kyoto-v1.json",part:"kyoto-d4",city:"kyoto",ll:[135.78000,35.01400,135.80000,35.03200]},{id:"kyoto-d5",url:"city-kyoto-v1.json",part:"kyoto-d5",city:"kyoto",ll:[135.78000,35.03200,135.80000,35.05000]}];
+for(const t of CITY_TILES){const a=P(t.ll[0],t.ll[3]),b=P(t.ll[2],t.ll[1]);t.wb=[a[0],a[1],b[0],b[1]];t.st=0;t.cid=t.city||t.id}
+/* a city split into tiles (Kyoto) fades only at the outer edge of the whole city, never between its tiles */
+for(const t of CITY_TILES){const g=CITY_TILES.filter(u=>u.cid===t.cid);t.ob=[Math.min(...g.map(u=>u.wb[0])),Math.min(...g.map(u=>u.wb[1])),Math.max(...g.map(u=>u.wb[2])),Math.max(...g.map(u=>u.wb[3]))]}
 const cs01=t=>{t=t<0?0:t>1?1:t;return t*t*(3-2*t)};
 const CK={near:0,flat:0,vis:0,q:2,ema:16.7,slow:0,fast:0,dm:1e9};   /* vis: how close the camera is (labels, glow hand-off); buildings never switch off */
 function cityNear(x,y){let k=0;for(const t of CITY_TILES){const b=t.wb,d=Math.hypot(Math.max(b[0]-x,0,x-b[2]),Math.max(b[1]-y,0,y-b[3]));k=Math.max(k,1-cs01(d/1.3))}return k}
@@ -2025,7 +2028,7 @@ void main(){vec2 w=uW0+uWM*(vec2(gl_FragCoord.x,uH-gl_FragCoord.y)/uDpr);float c
  dotV3:`#version 300 es
 layout(location=0) in vec2 aP;layout(location=2) in float aH;layout(location=3) in float aR;layout(location=4) in float aC;
 layout(location=5) in float aRp;layout(location=6) in float aCp;layout(location=7) in float aBp;layout(location=8) in float aJ;
-uniform mat4 uVP;uniform vec3 uO,uE;uniform float uZs,uDpr,uF,uNear,uBias,uZa,uZb,uJit,uD,uKd,uLb,uZ,uTf,uBt,uSP,uPs,uPm;uniform vec2 uRes;uniform vec4 uClip;uniform vec3 uFog;uniform vec4 uCity;uniform float uCA;
+uniform mat4 uVP;uniform vec3 uO,uE;uniform float uZs,uDpr,uF,uNear,uBias,uZa,uZb,uJit,uD,uKd,uLb,uZ,uTf,uBt,uSP,uPs,uPm;uniform vec2 uRes;uniform vec4 uClip;uniform vec3 uFog;uniform vec4 uCity;uniform float uCA;uniform vec4 uCT[24];uniform int uCN;
 flat out int vC;flat out int vCp;out float vA;out float vT;out float vHf;out float vR;
 ${DOTCOM}${DOTFX}
 void main(){vec2 p=aP*(1./128.);int ci=int(aC+.5),cp=int(aCp+.5);vC=ci;vCp=cp;vT=1.;vX=vec4(0.);vMul=1.;float aB=mod(aBp,16.);
@@ -2047,7 +2050,8 @@ void main(){vec2 p=aP*(1./128.);int ci=int(aC+.5),cp=int(aCp+.5);vC=ci;vCp=cp;vT
  float rp=min(r*exp2(Lr-zc+1.)/sqrt(1.+3.*gc*gc),r*2.6)*gv,rd=rp*uDpr;
  if(rd<.6){al*=rd*rd/.36;rp=.6/uDpr;}
  vR=rp;vHf=rp+.75/uDpr;gl_PointSize=min(2.*vHf*uDpr*uPs,uPm);
- if(uCA>0.){float ce=min(min(w.x-uCity.x,uCity.z-w.x),min(w.y-uCity.y,uCity.w-w.y));al*=1.-uCA*smoothstep(0.,.23,ce);}
+ if(uCA>0.){float ce=min(min(w.x-uCity.x,uCity.z-w.x),min(w.y-uCity.y,uCity.w-w.y));
+  if(ce>0.){bool cov=false;for(int i=0;i<24;i++){if(i>=uCN)break;vec4 b=uCT[i];if(w.x>=b.x&&w.x<=b.z&&w.y>=b.y&&w.y<=b.w){cov=true;break;}}if(cov)al*=1.-uCA*smoothstep(0.,.23,ce);}}
  vA=(1.-smoothstep(uFog.x,uFog.y,c.w)*.92)*al;
  float vb=max(uNear,c.w*(1.-uBias));c.z=(uZa*vb+uZb)/vb*c.w;gl_Position=c;}`,
  dotF3:`#version 300 es
@@ -2217,7 +2221,7 @@ const GL={gl:null,lost:false,
   const use=P=>{const u=P.u;gl.useProgram(P.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform2f(u.uRes,W,H);gl.uniform1f(u.uDpr,DPR);gl.uniform1f(u.uZs,m.zs);gl.uniform1f(u.uF,m.F);gl.uniform1f(u.uNear,near);
     gl.uniform1f(u.uBias,.006);gl.uniform1f(u.uJit,.8*smooth01((cam.tilt-.55)/.6));gl.uniform1f(u.uZa,za);gl.uniform1f(u.uZb,zb);gl.uniform3f(u.uFog,m.fs,m.fe,0);if(u.uPal)gl.uniform3fv(u.uPal,this.P);
     gl.uniform3f(u.uE,m.ex,m.ey,m.ez);gl.uniform1f(u.uD,m.D);gl.uniformMatrix2fv(u.uMi,false,[1,0,0,1]);gl.uniform1f(u.uPs,P===this.pGlow3?.5:1);gl.uniform1f(u.uPm,this.pm);gl.uniform1f(u.uKd,KD3);gl.uniform1f(u.uLb,LB3);gl.uniform1f(u.uSP,LT_SP);gl.uniform1f(u.uGrl,GRL);
-    gl.uniform1f(u.uEx,EX());gl.uniform1f(u.uSl,smooth01((cam.tilt-.35)/.6));this.fxU(u);if(u.uCity){const cb=CITYL.fadeBox();gl.uniform4f(u.uCity,cb[0],cb[1],cb[2],cb[3]);gl.uniform1f(u.uCA,P===this.pGlow3?cb[4]*CK.vis:cb[4])}};
+    gl.uniform1f(u.uEx,EX());gl.uniform1f(u.uSl,smooth01((cam.tilt-.35)/.6));this.fxU(u);if(u.uCity){const cb=CITYL.fadeBox();gl.uniform4f(u.uCity,cb[0],cb[1],cb[2],cb[3]);gl.uniform1f(u.uCA,P===this.pGlow3?cb[4]*CK.vis:cb[4]);if(u.uCT){gl.uniform4fv(u.uCT,cb[5]);gl.uniform1i(u.uCN,cb[6])}}};
   const pass=(P,r)=>{const u=P.u;gl.uniform1f(u.uGp,r===1?1:0);for(const it of list){const b=it[0];if(!b.n[r])continue;const k=it[3]/(LT_N*LT_SP),cl=it[5];
     gl.uniform3f(u.uO,it[1],it[2],k);gl.uniform1f(u.uA,it[4]);gl.uniform1f(u.uZ,it[8]);gl.uniform1f(u.uTf,it[9]);gl.uniform1f(u.uBt,it[10]);
     if(cl)gl.uniform4f(u.uClip,cl[0],cl[1],cl[2],cl[3]);else gl.uniform4f(u.uClip,-1,-1,1e6,1e6);
@@ -2232,8 +2236,10 @@ const GL={gl:null,lost:false,
     gl.uniform2f(C.u.uInv,1/GLC.width,1/GLC.height);gl.bindVertexArray(this.vEmpty);gl.drawArrays(gl.TRIANGLES,0,3);gl.activeTexture(gl.TEXTURE0);gl.enable(gl.DEPTH_TEST);use(this.pDot3)}
   if(this.skip!=="dots")pass(this.pDot3,2);CITYL.glow(gl,m);gl.disable(gl.DEPTH_TEST);gl.depthMask(true);gl.bindVertexArray(null)}};
 /* ================= city detail: 3D buildings =================
-   A city is a set of tiles (one so far: Akasaka, file city-akasaka-v2.json, fetched the first time you come near and
-   then kept by the service worker). Each tile holds the real OpenStreetMap buildings: the near-rectangles (about 4 in 5)
+   A city is a set of tiles (Akasaka: one file, city-akasaka-v2.json; Kyoto: 20 tiles of about 2 x 2 km,
+   packed in one file, city-kyoto-v1.json), fetched the first time you come near and then kept by the service worker.
+   A tiled city fades only at its outer edge, and the dots give way under every loaded tile. Kyoto adds floating box
+   pieces (pagodas, gates, halls, the torii, Kyoto Tower), far-detail blocks (cityLod*), lanterns and river streaks. Each tile holds the real OpenStreetMap buildings: the near-rectangles (about 4 in 5)
    as rotated boxes sharing one box shape (36 bytes each on the GPU), the rest with their true outlines; landmark
    outlines at their real heights, street lights, trees and a ground texture with the real streets. Heights come from
    OpenStreetMap where mapped (about 1 in 10), otherwise each 100 m area's buildings are set to its real average.
@@ -2249,27 +2255,31 @@ const CITY_GLSL={
  bV:`#version 300 es
 layout(location=0) in vec3 aV;layout(location=1) in float aF;layout(location=2) in vec4 iA;layout(location=3) in vec4 iB;layout(location=4) in float iK;
 uniform mat4 uVP;uniform float uZs,uRise,uMpu;uniform vec2 uM;uniform vec4 uBox;
-out vec2 vUV;out vec2 vN;out vec3 vK;out float vW;out float vRoof;
-void main(){float c=cos(iB.x),s=sin(iB.x);vec2 l=aV.xy*iA.zw,e=vec2(l.x*c-l.y*s,l.x*s+l.y*c),wp=iA.xy+vec2(e.x/uM.x,-e.y/uM.y);
+out vec2 vUV;out vec2 vN;out vec3 vK;out float vW;out float vRoof;out float vZ0;
+void main(){float c=cos(iB.x),s=sin(iB.x),kd=iK-10.*floor(iK*.1+.05),z0=floor(iK*.1+.05)*.1;vZ0=z0;vec2 l=aV.xy*iA.zw,e=vec2(l.x*c-l.y*s,l.x*s+l.y*c),wp=iA.xy+vec2(e.x/uM.x,-e.y/uM.y);
  float ed=min(min(wp.x-uBox.x,uBox.z-wp.x),min(wp.y-uBox.y,uBox.w-wp.y)),rise=uRise*smoothstep(0.,.23,ed),H=iB.y;
- vec4 cp=uVP*vec4(wp,iB.z*uZs+(aV.z>.5?H*rise:-40.)/uMpu,1.);gl_Position=cp;vW=cp.w;
+ vec4 cp=uVP*vec4(wp,iB.z*uZs+(aV.z>.5?H*rise:z0>0.?z0*rise:-40.)/uMpu,1.);gl_Position=cp;vW=cp.w;
  int f=int(aF+.5);vec2 nl=f==0?vec2(1,0):f==1?vec2(-1,0):f==2?vec2(0,1):f==3?vec2(0,-1):vec2(0);vN=vec2(nl.x*c-nl.y*s,nl.x*s+nl.y*c);
- float u=(f<2?l.y:l.x)*(f==1||f==2?-1.:1.)+float(f)*31.7;vUV=vec2(u,aV.z>.5?H:-40.);vRoof=f==4?1.:0.;vK=vec3(iB.w,iK,H);}`,
+ float u=(f<2?l.y:l.x)*(f==1||f==2?-1.:1.)+float(f)*31.7;vUV=vec2(u,aV.z>.5?H:z0>0.?z0:-40.);vRoof=f==4?1.:0.;vK=vec3(iB.w,kd,H);}`,
  lV:`#version 300 es
 layout(location=0) in vec3 aP;layout(location=1) in vec4 aU;layout(location=2) in vec3 aB;
 uniform mat4 uVP;uniform float uZs,uRise,uMpu;uniform vec4 uBox;
-out vec2 vUV;out vec2 vN;out vec3 vK;out float vW;out float vRoof;
-void main(){float ed=min(min(aP.x-uBox.x,uBox.z-aP.x),min(aP.y-uBox.y,uBox.w-aP.y)),rise=uRise*smoothstep(0.,.23,ed),H=aU.w;
- vec4 cp=uVP*vec4(aP.xy,aB.x*uZs+(aP.z>.5?H*rise:-40.)/uMpu,1.);gl_Position=cp;vW=cp.w;
- vRoof=(aU.y==0.&&aU.z==0.)?1.:0.;vN=aU.yz;vUV=vec2(aU.x,aP.z>.5?H:-40.);vK=vec3(aB.y,aB.z,H);}`,
+out vec2 vUV;out vec2 vN;out vec3 vK;out float vW;out float vRoof;out float vZ0;
+void main(){float ed=min(min(aP.x-uBox.x,uBox.z-aP.x),min(aP.y-uBox.y,uBox.w-aP.y)),rise=uRise*smoothstep(0.,.23,ed),H=aU.w,kd=aB.z-10.*floor(aB.z*.1+.05),z0=floor(aB.z*.1+.05)*.1;vZ0=z0;
+ vec4 cp=uVP*vec4(aP.xy,aB.x*uZs+(aP.z>.5?H*rise:z0>0.?z0*rise:-40.)/uMpu,1.);gl_Position=cp;vW=cp.w;
+ vRoof=(aU.y==0.&&aU.z==0.)?1.:0.;vN=aU.yz;vUV=vec2(aU.x,aP.z>.5?H:z0>0.?z0:-40.);vK=vec3(aB.y,kd,H);}`,
  bF:`#version 300 es
-precision highp float;in vec2 vUV;in vec2 vN;in vec3 vK;in float vW;in float vRoof;out vec4 o;uniform vec3 uHz,uFog;uniform float uDet,uFar;
+precision highp float;in vec2 vUV;in vec2 vN;in vec3 vK;in float vW;in float vRoof;in float vZ0;out vec4 o;uniform vec3 uHz,uFog;uniform float uDet,uFar;
 float h21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
 void main(){float seed=vK.x,kind=vK.y,H=vK.z;vec3 c;
  if(vRoof>.5)c=vec3(.085,.1,.135)+vec3(.018)*h21(vec2(seed,1.7))+uFar*vec3(.06,.07,.09);
  else{float lam=.72+.38*max(dot(vN,normalize(vec2(-.55,.83))),-.4),v=max(vUV.y,0.);
   vec3 wall=vec3(.072,.088,.125)*lam+vec3(.025,.035,.06)*clamp(v/220.,0.,1.)+vec3(.07,.045,.02)*exp(-v/10.);
-  if(kind>2.5){vec3 fl=kind<3.5?vec3(.85,.26,.12):kind<4.5?vec3(.78,.8,.82):vec3(.86,.7,.46);c=fl*(1.-.55*clamp(v/max(H,1.),0.,1.))*(.55+.45*lam);}
+  if(kind>2.5){
+   /* floodlit: 3 vermilion, 4 white, 5 warm, 6 old wood, 8 gold/bronze; 7 dark roof tiles lit from below at the eaves; 9 a lit glass band */
+   if(kind>6.5&&kind<7.5){float e=clamp((v-vZ0)/max(H-vZ0,.3),0.,1.);c=mix(vec3(.62,.4,.2),vec3(.075,.08,.1),smoothstep(0.,.5,e))*(.6+.4*lam);}
+   else if(kind>8.5){c=vec3(1.,.84,.55)*(.55+.45*step(.28,fract(vUV.x/1.7)))*(.7+.3*lam);}
+   else{vec3 fl=kind<3.5?vec3(.85,.26,.12):kind<4.5?vec3(.78,.8,.82):kind<5.5?vec3(.86,.7,.46):kind<6.5?vec3(.56,.34,.17):vec3(.98,.74,.3);c=fl*(1.-.55*clamp(v/max(H,1.),0.,1.))*(.55+.45*lam);}}
   else{float s1=fract(seed*7.13),s2=fract(seed*3.71),cw=mix(2.7,4.3,s1),fh=kind>1.5?3.9:mix(3.,3.6,s2);
    vec2 g=vec2(vUV.x/cw,(vUV.y-.8)/fh),id=floor(g),f=(fract(g)-.5)*vec2(cw,fh);
    float px=max(max(fwidth(vUV.x),fwidth(vUV.y)),1e-4),r=kind>1.5?.6:.5,d=length(f*vec2(1.,.82)),cov=1.-smoothstep(r-px*.7,r+px*.7,d);
@@ -2284,26 +2294,30 @@ void main(){float seed=vK.x,kind=vK.y,H=vK.z;vec3 c;
 layout(location=0) in vec3 aP;layout(location=1) in vec2 aT;uniform mat4 uVP;uniform float uZs,uMpu;out vec2 vT;out vec2 vWp;out float vW;
 void main(){vT=aT;vWp=aP.xy;vec4 cp=uVP*vec4(aP.xy,aP.z*uZs+.6/uMpu,1.);gl_Position=cp;vW=cp.w;}`,
  gF:`#version 300 es
-precision highp float;in vec2 vT;in vec2 vWp;in float vW;out vec4 o;uniform sampler2D uTex;uniform float uA;uniform vec4 uBox;uniform vec3 uHz,uFog;
+precision highp float;in vec2 vT;in vec2 vWp;in float vW;out vec4 o;uniform sampler2D uTex;uniform float uA,uRiv;uniform vec4 uBox;uniform vec3 uHz,uFog;
 void main(){float ed=min(min(vWp.x-uBox.x,uBox.z-vWp.x),min(vWp.y-uBox.y,uBox.w-vWp.y)),a=uA*smoothstep(0.,.23,ed);if(a<=0.)discard;
- vec3 c=texture(uTex,vT).rgb*1.55;c=mix(c,uHz,smoothstep(uFog.x,uFog.y,vW)*uFog.z);o=vec4(c*a,a);}`,
+ vec3 c=texture(uTex,vT).rgb*1.55;
+ if(uRiv>0.&&c.b>.16&&c.b>c.r*2.8){vec2 lp=(vWp-uBox.xy)*1111.95;float rp=lp.y*.9+sin(lp.x*.35)*2.,fw=fwidth(rp);c+=uRiv*(vec3(.005,.012,.022)*sin(rp)*(1.-smoothstep(.4,1.6,fw))+vec3(.012,.02,.032));}
+ c=mix(c,uHz,smoothstep(uFog.x,uFog.y,vW)*uFog.z);o=vec4(c*a,a);}`,
  pV:`#version 300 es
-layout(location=0) in vec4 aP;layout(location=1) in vec3 aS;uniform mat4 uVP;uniform float uZs,uMpu,uPS,uA,uDpr,uDm;uniform vec4 uBox;
-out vec3 vC;out float vA;flat out float vTy;
+layout(location=0) in vec4 aP;layout(location=1) in vec3 aS;uniform mat4 uVP;uniform float uZs,uMpu,uPS,uA,uDpr,uDm,uLan,uRiv;uniform vec4 uBox;
+out vec3 vC;out float vA;flat out float vTy;flat out float vSd;
 float h1(float x){return fract(sin(x*91.7)*43758.5);}
 void main(){float sz=aS.x,ty=aS.y,sd=aS.z,ed=min(min(aP.x-uBox.x,uBox.z-aP.x),min(aP.y-uBox.y,uBox.w-aP.y)),ef=smoothstep(0.,.23,ed),a=uA*ef;
  if(ty<.5)a*=1.-smoothstep(4000.,9000.,uDm);else if(ty>2.5&&ty<3.5)a*=1.-smoothstep(6500.,9000.,uDm);else if(ty<2.5)a*=1.+1.6*smoothstep(4000.,20000.,uDm);   /* main roads read further out */
+ else if(ty>6.5&&ty<7.5)a*=uLan*(1.-smoothstep(3500.,7000.,uDm));else if(ty>7.5)a*=uRiv*.8*(1.-smoothstep(3000.,7000.,uDm));
  bool up=ty>3.5&&ty<6.5;vec4 cp=uVP*vec4(aP.xy,aP.w*uZs+aP.z*(up?a:1.)/uMpu,1.);gl_Position=cp;
  vec3 c;if(ty<.5)c=vec3(1.,.6,.24);else if(ty<1.5)c=vec3(1.,.7,.36);else if(ty<2.5)c=vec3(.92,.86,.72);
  else if(ty<3.5){float r=h1(sd);c=r<.66?mix(vec3(.035,.085,.05),vec3(.055,.12,.065),h1(sd+1.)):r<.86?vec3(.19,.16,.045):vec3(.19,.065,.04);}
- else if(ty<4.5)c=vec3(1.,.14,.09);else if(ty<5.5)c=vec3(1.,.5,.16);else c=vec3(.75,.7,.62);
+ else if(ty<4.5)c=vec3(1.,.14,.09);else if(ty<5.5)c=vec3(1.,.5,.16);else if(ty<6.5)c=vec3(.75,.7,.62);else if(ty<7.5)c=vec3(1.,.42,.15);else if(ty<8.5)c=vec3(1.,.66,.32);else c=vec3(1.,.4,.16);
  float ps=sz/uMpu*uPS/max(cp.w,1e-5);
  if(ty<2.5||ty>3.5){float mn=(ty>3.5?2.2:1.6)*uDpr;a*=clamp(ps/mn,.25,1.);ps=max(ps,mn);}else ps=max(ps,uDpr);
- gl_PointSize=min(ps,(ty>2.5&&ty<3.5?44.:22.)*uDpr);vC=c;vA=a;vTy=ty;}`,
+ gl_PointSize=min(ps,(ty>2.5&&ty<3.5?44.:22.)*uDpr);vC=c;vA=a;vTy=ty;vSd=sd;}`,
  pF:`#version 300 es
-precision highp float;in vec3 vC;in float vA;flat in float vTy;out vec4 o;
+precision highp float;in vec3 vC;in float vA;flat in float vTy;flat in float vSd;out vec4 o;
 void main(){vec2 q=gl_PointCoord*2.-1.;float r=dot(q,q);if(r>1.||vA<=0.)discard;
- if(vTy>2.5&&vTy<3.5){o=vec4(vC*vA,vA);return;}float k=(exp(-r*5.5)+exp(-r*1.6)*.35)*vA;o=vec4(vC*k,k*.5);}`};
+ if(vTy>2.5&&vTy<3.5){o=vec4(vC*vA,vA);return;}
+ if(vTy>7.5){float e=q.x*q.x*9.+q.y*q.y*1.05,k2=(exp(-e*2.5)+exp(-e*.8)*.2)*vA*(.55+.45*sin(q.y*16.+vSd));o=vec4(vC*k2,k2*.4);return;}float k=(exp(-r*5.5)+exp(-r*1.6)*.35)*vA;o=vec4(vC*k,k*.5);}`};
 function cityEar(p){const n=p.length;if(n<3)return[];const V=[...Array(n).keys()],out=[];
   const cr=(a,b,c)=>(p[b][0]-p[a][0])*(p[c][1]-p[a][1])-(p[b][1]-p[a][1])*(p[c][0]-p[a][0]);let guard=0;
   while(V.length>3&&guard++<4*n){let found=false;
@@ -2313,11 +2327,19 @@ function cityEar(p){const n=p.length;if(n<3)return[];const V=[...Array(n).keys()
     if(!found)break}
   if(V.length===3)out.push(V[0],V[1],V[2]);else for(let i=1;i<V.length-1;i++)out.push(V[0],V[i],V[i+1]);return out}
 const CITYL={progs:null,drawn:false,fpsEl:null,fpsT:0,
+ /* the nearest city with a tile loaded: its outer box (the fade edge) and every loaded tile of it (the dots give way there) */
  fadeBox(){let best=null,bd=1e9;for(const t of CITY_TILES){if(t.st!==3)continue;const b=t.wb,d=Math.hypot(Math.max(b[0]-cam.x,0,cam.x-b[2]),Math.max(b[1]-cam.y,0,cam.y-b[3]));if(d<bd){bd=d;best=t}}
-   return best&&cityOn()?[best.wb[0],best.wb[1],best.wb[2],best.wb[3],1]:[0,0,0,0,0]},
+   const L=this.fbL||(this.fbL=new Float32Array(96));let n=0;
+   if(best&&cityOn())for(const t of CITY_TILES)if(t.st===3&&t.cid===best.cid&&n<24){L.set(t.wb,n*4);n++}
+   return best&&cityOn()?[best.ob[0],best.ob[1],best.ob[2],best.ob[3],1,L,n]:[0,0,0,0,0,L,0]},
  want(m){const now=Date.now();for(const t of CITY_TILES){if(t.st>0||(t.st<0&&now<t.retry))continue;const b=t.wb;
    if(boxDist(m,b[0],b[1],0,b[2],b[3],.3)>Math.max(m.D*8,1.5))continue;
+   if(t.part){this.pack(t,now);continue}
    t.st=1;fetch(t.url).then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(j=>{t.data=j;t.st=2;invalidate()}).catch(()=>{t.st=-1;t.retry=Date.now()+30000})}},
+ /* a city shipped as one file (Kyoto): the first tile wanted fetches it, and every tile of it takes its part */
+ pack(t,now){const g=CITY_TILES.filter(u=>u===t||u.url===t.url&&(u.st===0||u.st<0&&now>=u.retry));for(const u of g)u.st=1;
+   fetch(t.url).then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(j=>{for(const u of g){const d=j.tiles&&j.tiles[u.part];if(d){u.data=d;u.st=2}else{u.st=-1;u.retry=Date.now()+6e5}}invalidate()})
+   .catch(()=>{for(const u of g){u.st=-1;u.retry=Date.now()+30000}})},
  init(gl){if(this.progs)return true;
   try{const sh=(ty,s)=>{const o=gl.createShader(ty);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(o));return o};
     const pr=(v,f)=>{const p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHADER,v));gl.attachShader(p,sh(gl.FRAGMENT_SHADER,f));gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));
@@ -2328,19 +2350,20 @@ const CITYL={progs:null,drawn:false,fpsEl:null,fpsT:0,
     quad([1,-1,0],[1,1,0],[1,1,1],[1,-1,1],0);quad([-1,1,0],[-1,-1,0],[-1,-1,1],[-1,1,1],1);quad([1,1,0],[-1,1,0],[-1,1,1],[1,1,1],2);
     quad([-1,-1,0],[1,-1,0],[1,-1,1],[-1,-1,1],3);quad([-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1],4);
     this.boxBuf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,this.boxBuf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(v),gl.STATIC_DRAW);
-    if(!this.hooked){this.hooked=true;GLC.addEventListener("webglcontextrestored",()=>{CITYL.progs=null;for(const t of CITY_TILES)if(t.st===3)t.st=2})}
+    if(!this.hooked){this.hooked=true;GLC.addEventListener("webglcontextrestored",()=>{CITYL.progs=null;for(const t of CITY_TILES)if(t.st===3)t.st=t.data?2:0})}
     return true}catch(e){console.warn("city layer off:",e);SET.city=false;return false}},
  build(gl,t){const d=t.data,K=COSL*SCALE,wx=x=>(x/d.kx+d.lon0-129)*K,wy=y=>(46-(y/d.ky+d.lat0))*SCALE,MX=d.kx/K,MY=d.ky/SCALE;
   let sd=987654321;const rnd=()=>{sd=(sd*16807)%2147483647;return sd/2147483647};
-  const g={chunks:[],labels:[]},b=t.wb;
+  const g={chunks:[],labels:[],lv:null,riv:!!d.riv},b=t.wb,LOD=!!d.lod;
   /* generated buildings: one instance each, sorted into ~600 m chunks so the ones off screen are skipped */
-  {const B=d.box,n=B.length/7,NX=Math.max(1,Math.ceil((b[2]-b[0])/.55)),NY=Math.max(1,Math.ceil((b[3]-b[1])/.55)),cells=Array.from({length:NX*NY},()=>[]);
-   for(let i=0;i<n;i++){const o=i*7,x=wx(B[o]/10),y=wy(B[o+1]/10);cells[clamp(Math.floor((y-b[1])/(b[3]-b[1])*NY),0,NY-1)*NX+clamp(Math.floor((x-b[0])/(b[2]-b[0])*NX),0,NX-1)].push(i)}
+  {const B=d.box,n=B.length/7,NX=Math.max(1,Math.ceil((b[2]-b[0])/.55)),NY=Math.max(1,Math.ceil((b[3]-b[1])/.55)),cells=Array.from({length:NX*NY+1},()=>[]);g.NX=NX;g.NY=NY;
+   for(let i=0;i<n;i++){const o=i*7,x=wx(B[o]/10),y=wy(B[o+1]/10);cells[LOD&&B[o+6]%10>=3?NX*NY:clamp(Math.floor((y-b[1])/(b[3]-b[1])*NY),0,NY-1)*NX+clamp(Math.floor((x-b[0])/(b[2]-b[0])*NX),0,NX-1)].push(i)}
    const I=new Float32Array(n*9);let k=0;
-   for(const cell of cells){if(!cell.length)continue;const ch={off:k,n:cell.length,x0:1e9,y0:1e9,x1:-1e9,y1:-1e9,b0:1e9,b1:-1e9,h:0};
+   for(let ci=0;ci<cells.length;ci++){const cell=cells[ci];if(!cell.length)continue;const ch={off:k,n:cell.length,x0:1e9,y0:1e9,x1:-1e9,y1:-1e9,b0:1e9,b1:-1e9,h:0,key:ci<NX*NY?ci:-1};
      for(const i of cell){const o=i*7,x=wx(B[o]/10),y=wy(B[o+1]/10),hw=B[o+2]/10,hd=B[o+3]/10,h=B[o+5]/10,base=gh(x,y),r=Math.hypot(hw,hd)/Math.min(MX,MY);
        I.set([x,y,hw,hd,B[o+4]/1e4,h,base,rnd()*97.3,B[o+6]],k*9);k++;
-       ch.x0=Math.min(ch.x0,x-r);ch.x1=Math.max(ch.x1,x+r);ch.y0=Math.min(ch.y0,y-r);ch.y1=Math.max(ch.y1,y+r);ch.b0=Math.min(ch.b0,base);ch.b1=Math.max(ch.b1,base);ch.h=Math.max(ch.h,h)}
+       ch.x0=Math.min(ch.x0,x-r);ch.x1=Math.max(ch.x1,x+r);ch.y0=Math.min(ch.y0,y-r);ch.y1=Math.max(ch.y1,y+r);ch.b0=Math.min(ch.b0,base);ch.b1=Math.max(ch.b1,base);ch.h=Math.max(ch.h,h);
+       if(LOD&&ch.key>=0)cityLodAdd(g,ch.key,B[o]/10,B[o+1]/10,4*hw*hd,h,B[o+6]%10)}
      g.chunks.push(ch)}
    g.ibuf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,g.ibuf);gl.bufferData(gl.ARRAY_BUFFER,I,gl.STATIC_DRAW);
    g.vao=gl.createVertexArray();gl.bindVertexArray(g.vao);gl.bindBuffer(gl.ARRAY_BUFFER,this.boxBuf);
@@ -2353,7 +2376,8 @@ const CITYL={progs:null,drawn:false,fpsEl:null,fpsT:0,
      let ar=0;for(let i=0;i<p.length;i++){const q=p[(i+1)%p.length];ar+=p[i][0]*q[1]-q[0]*p[i][1]}if(ar<0)p.reverse();
      let cx=0,cy=0;for(const q of p){cx+=q[0];cy+=q[1]}cx/=p.length;cy/=p.length;const X=wx(cx),Y=wy(cy),base=gh(X,Y),s=rnd()*97.3;
      const key=clamp(Math.floor((Y-b[1])/(b[3]-b[1])*NY),0,NY-1)*NX+clamp(Math.floor((X-b[0])/(b[2]-b[0])*NX),0,NX-1);
-     let c=C.get(key);if(!c){c={A:[],x0:1e9,y0:1e9,x1:-1e9,y1:-1e9,b0:1e9,b1:-1e9,h:0};C.set(key,c)}
+     let c=C.get(key);if(!c){c={A:[],x0:1e9,y0:1e9,x1:-1e9,y1:-1e9,b0:1e9,b1:-1e9,h:0,key};C.set(key,c)}
+     if(LOD)cityLodAdd(g,key,cx,cy,Math.abs(ar)/2,h,kind);
      const A=c.A,put=(x,y,lz,uu,nx,ny)=>{const wX=wx(x),wY=wy(y);A.push(wX,wY,lz,uu,nx,ny,h,base,s,kind);if(wX<c.x0)c.x0=wX;if(wX>c.x1)c.x1=wX;if(wY<c.y0)c.y0=wY;if(wY>c.y1)c.y1=wY};
      let u=0;for(let i=0;i<p.length;i++){const a=p[i],q=p[(i+1)%p.length],dx=q[0]-a[0],dy=q[1]-a[1],L=Math.hypot(dx,dy)||1e-6,nx=dy/L,ny=-dx/L,u1=u+L;
        put(a[0],a[1],0,u,nx,ny);put(q[0],q[1],0,u1,nx,ny);put(q[0],q[1],1,u1,nx,ny);put(a[0],a[1],0,u,nx,ny);put(q[0],q[1],1,u1,nx,ny);put(a[0],a[1],1,u,nx,ny);u=u1}
@@ -2361,7 +2385,8 @@ const CITYL={progs:null,drawn:false,fpsEl:null,fpsT:0,
      c.b0=Math.min(c.b0,base);c.b1=Math.max(c.b1,base);c.h=Math.max(c.h,h)}
    for(const c of C.values()){const v=gl.createVertexArray();gl.bindVertexArray(v);const bf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,bf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(c.A),gl.STATIC_DRAW);
      gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,40,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,4,gl.FLOAT,false,40,12);
-     gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,3,gl.FLOAT,false,40,28);gl.bindVertexArray(null);g.pch.push({v,n:c.A.length/10,x0:c.x0,y0:c.y0,x1:c.x1,y1:c.y1,b0:c.b0,b1:c.b1,h:c.h})}}
+     gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,3,gl.FLOAT,false,40,28);gl.bindVertexArray(null);g.pch.push({v,n:c.A.length/10,x0:c.x0,y0:c.y0,x1:c.x1,y1:c.y1,b0:c.b0,b1:c.b1,h:c.h,key:c.key})}}
+  if(LOD)cityLodBuild(gl,g,t,wx,wy,rnd);
   /* landmarks: their real outlines at their real heights; towers over 100 m get red aircraft lights */
   const glow=[],trees=[];
   {const A=[];let hmax=0;
@@ -2372,7 +2397,7 @@ const CITYL={progs:null,drawn:false,fpsEl:null,fpsT:0,
      for(let i=0;i<p.length;i++){const a=p[i],q=p[(i+1)%p.length],dx=q[0]-a[0],dy=q[1]-a[1],L=Math.hypot(dx,dy)||1e-6,nx=dy/L,ny=-dx/L,u1=u+L;
        put(a[0],a[1],0,u,nx,ny);put(q[0],q[1],0,u1,nx,ny);put(q[0],q[1],1,u1,nx,ny);put(a[0],a[1],0,u,nx,ny);put(q[0],q[1],1,u1,nx,ny);put(a[0],a[1],1,u,nx,ny);u=u1}
      for(const i of cityEar(p))put(p[i][0],p[i][1],1,p[i][0],0,0);
-     if(h>=100){const seen=new Set();for(const[sx,sy]of[[1,1],[1,-1],[-1,1],[-1,-1]]){const q=p.reduce((m,v)=>(v[0]-cx)*sx+(v[1]-cy)*sy>(m[0]-cx)*sx+(m[1]-cy)*sy?v:m,p[0]),key=q.join();if(seen.has(key))continue;seen.add(key);
+     if(h>=100&&kind<10){const seen=new Set();for(const[sx,sy]of[[1,1],[1,-1],[-1,1],[-1,-1]]){const q=p.reduce((m,v)=>(v[0]-cx)*sx+(v[1]-cy)*sy>(m[0]-cx)*sx+(m[1]-cy)*sy?v:m,p[0]),key=q.join();if(seen.has(key))continue;seen.add(key);
        glow.push(wx(q[0]+(cx-q[0])*.08),wy(q[1]+(cy-q[1])*.08),h+1.5,base,4.5,4,0)}}}
    g.lm=gl.createVertexArray();gl.bindVertexArray(g.lm);const lb=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,lb);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(A),gl.STATIC_DRAW);
    gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,40,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,4,gl.FLOAT,false,40,12);
@@ -2380,8 +2405,12 @@ const CITYL={progs:null,drawn:false,fpsEl:null,fpsT:0,
   /* street lights and trees */
   for(let i=0;i<d.lights.length;i+=4){const k=d.lights[i+3],x=wx(d.lights[i]/10),y=wy(d.lights[i+1]/10);glow.push(x,y,d.lights[i+2]/10+5.5,gh(x,y),k===0?2.6:k===1?3.1:2.9,k,0)}
   for(let i=0;i<d.trees.length;i+=2){const s=rnd(),x=wx(d.trees[i]/10),y=wy(d.trees[i+1]/10);trees.push(x,y,4+s*3,gh(x,y),3.2+s*2.4,3,rnd()*100)}
-  /* Tokyo Tower: a lattice of lit points at its true 333 m */
-  {const TX=wx(d.tt[0]/10),TY=wy(d.tt[1]/10),TB=gh(TX,TY),TP=[[0,40],[55,25],[120,14],[145,11.5],[160,10.5],[223,6.5],[250,3.8],[262,2.2],[333,.7]];
+  if(d.bc)for(let i=0;i<d.bc.length;i+=3){const x=wx(d.bc[i]/10),y=wy(d.bc[i+1]/10);glow.push(x,y,d.bc[i+2]/10,gh(x,y),4.5,4,0)}   /* red beacons on tower tops */
+  /* paper lanterns along the lanes of Gion and Pontocho, and the lights' streaks on the Kamo River (each switchable in Settings) */
+  if(d.lan)for(let i=0;i<d.lan.length;i+=3){const x=wx(d.lan[i]/10),y=wy(d.lan[i+1]/10);glow.push(x,y,d.lan[i+2]/10,gh(x,y),1.8,7,rnd()*100)}
+  if(d.rf)for(let i=0;i<d.rf.length;i+=3){const x=wx(d.rf[i]/10),y=wy(d.rf[i+1]/10);glow.push(x,y,.3,gh(x,y),d.rf[i+2]?4.5:6,d.rf[i+2]?9:8,rnd()*100)}
+  /* Tokyo Tower: a lattice of lit points at its true 333 m (only in the tile that has it) */
+  if(d.tt){const TX=wx(d.tt[0]/10),TY=wy(d.tt[1]/10),TB=gh(TX,TY),TP=[[0,40],[55,25],[120,14],[145,11.5],[160,10.5],[223,6.5],[250,3.8],[262,2.2],[333,.7]];
    const hw=z=>{for(let i=1;i<TP.length;i++)if(z<=TP[i][0]){const a=TP[i-1],c=TP[i];return a[1]+(c[1]-a[1])*(z-a[0])/(c[0]-a[0])}return .5};
    const tp=(x,y,z,k)=>glow.push(TX+x/MX,TY-y/MY,z,TB,k===6?1.5:1.7,k,0),C=[[1,1],[1,-1],[-1,-1],[-1,1]];
    for(let z=0;z<333;z+=1.3){const w=hw(z);for(const[sx,sy]of C)tp(sx*w,sy*w,z,5)}
@@ -2401,32 +2430,74 @@ const CITYL={progs:null,drawn:false,fpsEl:null,fpsT:0,
    const ib=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(IX),gl.STATIC_DRAW);gl.bindVertexArray(null);g.gn=IX.length;
    const im=new Image();im.onload=()=>{if(GL.lost)return;const tx=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tx);gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,im);gl.generateMipmap(gl.TEXTURE_2D);
      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);g.tex=tx;invalidate()};im.src=d.ground}
-  for(const[n,x,y,h]of d.labels){const X=wx(x/10),Y=wy(y/10);g.labels.push({n,x:X,y:Y,h:h/10,base:gh(X,Y)})}
+  for(const[n,x,y,h,sh]of d.labels){const X=wx(x/10),Y=wy(y/10);g.labels.push({n,x:X,y:Y,h:h/10,sh,base:gh(X,Y)})}
   g.MX=MX;g.MY=MY;return g},
  /* buildings, landmarks, trees and the street-level ground: drawn after the terrain, before the dots, writing depth
     so the dots and lines behind a building are hidden */
  solid(gl,m,VP,FG,HZ){this.drawn=false;if(!cityOn())return;if(m.D*M_PER_U<150000)this.want(m);
-  for(const t of CITY_TILES)if(t.st===2&&GQ8&&this.init(gl)){try{t.g=this.build(gl,t);t.st=3}catch(e){console.warn(e);t.st=-1;t.retry=Date.now()+6e5}}
+  for(const t of CITY_TILES)if(t.st===2&&GQ8&&this.init(gl)){try{t.g=this.build(gl,t);t.st=3;if(t.data.lod)t.data=null}catch(e){console.warn(e);t.st=-1;t.retry=Date.now()+6e5}
+    if(CITY_TILES.some(u=>u.st===2))invalidate();break}
   const Pg=this.progs;if(!Pg)return;let any=false;
   const set=(P,t)=>{const u=P.u;gl.useProgram(P.p);gl.uniformMatrix4fv(u.uVP,false,VP);if(u.uZs)gl.uniform1f(u.uZs,m.zs);if(u.uMpu)gl.uniform1f(u.uMpu,M_PER_U);
-    if(u.uBox)gl.uniform4f(u.uBox,t.wb[0],t.wb[1],t.wb[2],t.wb[3]);if(u.uRise)gl.uniform1f(u.uRise,1);if(u.uA)gl.uniform1f(u.uA,1);if(u.uDm)gl.uniform1f(u.uDm,CK.dm);if(u.uFar)gl.uniform1f(u.uFar,cs01((CK.dm-3000)/20000));if(u.uHz)gl.uniform3f(u.uHz,HZ[0],HZ[1],HZ[2]);
-    if(u.uFog)gl.uniform3f(u.uFog,FG[0],FG[1],FG[2]);if(u.uDet)gl.uniform1f(u.uDet,CK.q>1?1:CK.q>0?.5:.3);if(u.uM)gl.uniform2f(u.uM,t.g.MX,t.g.MY);if(u.uPS)gl.uniform1f(u.uPS,m.F*DPR);if(u.uDpr)gl.uniform1f(u.uDpr,DPR)};
+    if(u.uBox)gl.uniform4f(u.uBox,t.ob[0],t.ob[1],t.ob[2],t.ob[3]);if(u.uRise)gl.uniform1f(u.uRise,1);if(u.uA)gl.uniform1f(u.uA,1);if(u.uDm)gl.uniform1f(u.uDm,CK.dm);if(u.uFar)gl.uniform1f(u.uFar,cs01((CK.dm-3000)/20000));if(u.uHz)gl.uniform3f(u.uHz,HZ[0],HZ[1],HZ[2]);
+    if(u.uFog)gl.uniform3f(u.uFog,FG[0],FG[1],FG[2]);if(u.uDet)gl.uniform1f(u.uDet,CK.q>1?1:CK.q>0?.5:.3);if(u.uM)gl.uniform2f(u.uM,t.g.MX,t.g.MY);if(u.uPS)gl.uniform1f(u.uPS,m.F*DPR);if(u.uDpr)gl.uniform1f(u.uDpr,DPR);if(u.uRiv)gl.uniform1f(u.uRiv,t.g.riv&&SET.river!==false?1:0)};
   gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
   for(const t of CITY_TILES){if(t.st!==3)continue;const b=t.wb,g=t.g;if(!boxIn(m,b[0],b[1],-.1,b[2],b[3],(g.hmax+60)/M_PER_U+.4))continue;any=true;
     if(g.tex){gl.depthMask(false);set(Pg.g,t);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,g.tex);gl.uniform1i(Pg.g.u.uTex,0);gl.bindVertexArray(g.gv);gl.drawElements(gl.TRIANGLES,g.gn,gl.UNSIGNED_SHORT,0)}
+    if(g.lod)cityLodPick(m,g);const lv=g.lv;
     gl.depthMask(true);set(Pg.b,t);gl.bindVertexArray(g.vao);gl.bindBuffer(gl.ARRAY_BUFFER,g.ibuf);const far=1e9;
-    for(const c of g.chunks){const zb=c.b0*m.zs-40/M_PER_U,zt=c.b1*m.zs+c.h/M_PER_U;if(!boxIn(m,c.x0,c.y0,zb,c.x1,c.y1,zt)||boxDist(m,c.x0,c.y0,zb,c.x1,c.y1,zt)>far)continue;const o=c.off*36;
+    for(const c of g.chunks){if(lv&&c.key>=0&&lv[c.key])continue;const zb=c.b0*m.zs-40/M_PER_U,zt=c.b1*m.zs+c.h/M_PER_U;if(!boxIn(m,c.x0,c.y0,zb,c.x1,c.y1,zt)||boxDist(m,c.x0,c.y0,zb,c.x1,c.y1,zt)>far)continue;const o=c.off*36;
       gl.vertexAttribPointer(2,4,gl.FLOAT,false,36,o);gl.vertexAttribPointer(3,4,gl.FLOAT,false,36,o+16);gl.vertexAttribPointer(4,1,gl.FLOAT,false,36,o+32);gl.drawArraysInstanced(gl.TRIANGLES,0,30,c.n)}
+    if(g.lod)cityLodDraw(gl,m,g);
     set(Pg.l,t);
-    for(const c of g.pch){const zb=c.b0*m.zs-40/M_PER_U,zt=c.b1*m.zs+c.h/M_PER_U;if(!boxIn(m,c.x0,c.y0,zb,c.x1,c.y1,zt)||boxDist(m,c.x0,c.y0,zb,c.x1,c.y1,zt)>far)continue;gl.bindVertexArray(c.v);gl.drawArrays(gl.TRIANGLES,0,c.n)}
+    for(const c of g.pch){if(lv&&lv[c.key])continue;const zb=c.b0*m.zs-40/M_PER_U,zt=c.b1*m.zs+c.h/M_PER_U;if(!boxIn(m,c.x0,c.y0,zb,c.x1,c.y1,zt)||boxDist(m,c.x0,c.y0,zb,c.x1,c.y1,zt)>far)continue;gl.bindVertexArray(c.v);gl.drawArrays(gl.TRIANGLES,0,c.n)}
     gl.bindVertexArray(g.lm);gl.drawArrays(gl.TRIANGLES,0,g.lmN);
     if(CK.q>0&&CK.dm<9000){set(Pg.p,t);gl.bindVertexArray(g.trees.v);gl.drawArrays(gl.POINTS,0,g.trees.n)}}
   gl.depthMask(false);gl.disable(gl.DEPTH_TEST);gl.bindVertexArray(null);this.drawn=any;this.vp=VP},
  /* street lights, the Tokyo Tower lattice and aircraft lights: added light, drawn last */
  glow(gl,m){if(!this.drawn)return;const Pg=this.progs,P=Pg.p,u=P.u;gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.depthMask(false);gl.blendFunc(gl.ONE,gl.ONE);gl.useProgram(P.p);
-  gl.uniformMatrix4fv(u.uVP,false,this.vp);gl.uniform1f(u.uZs,m.zs);gl.uniform1f(u.uMpu,M_PER_U);gl.uniform1f(u.uA,1);gl.uniform1f(u.uDm,CK.dm);gl.uniform1f(u.uPS,m.F*DPR);gl.uniform1f(u.uDpr,DPR);
-  for(const t of CITY_TILES){if(t.st!==3)continue;gl.uniform4f(u.uBox,t.wb[0],t.wb[1],t.wb[2],t.wb[3]);gl.bindVertexArray(t.g.glow.v);gl.drawArrays(gl.POINTS,0,t.g.glow.n)}
+  gl.uniformMatrix4fv(u.uVP,false,this.vp);gl.uniform1f(u.uZs,m.zs);gl.uniform1f(u.uMpu,M_PER_U);gl.uniform1f(u.uA,1);gl.uniform1f(u.uLan,SET.lantern!==false?1:0);gl.uniform1f(u.uRiv,SET.river!==false?1:0);gl.uniform1f(u.uDm,CK.dm);gl.uniform1f(u.uPS,m.F*DPR);gl.uniform1f(u.uDpr,DPR);
+  for(const t of CITY_TILES){if(t.st!==3)continue;gl.uniform4f(u.uBox,t.ob[0],t.ob[1],t.ob[2],t.ob[3]);gl.bindVertexArray(t.g.glow.v);gl.drawArrays(gl.POINTS,0,t.g.glow.n)}
   gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.disable(gl.DEPTH_TEST);gl.bindVertexArray(null)}};
+/* far detail for big cities (Kyoto; tiles marked lod). Each ~550 m chunk is drawn at one of three levels, chosen
+   every frame by how big its buildings look on screen: 0 every real building; 1 the buildings merged into 24 m blocks;
+   2 merged into 64 m blocks. A block keeps its buildings' total footprint, their height (root-mean-square, so the
+   skyline holds) and their window tone, so nothing disappears: it only gets simpler. Landmarks are never merged. The
+   governor's quality level moves the switch-over closer when frames run slow. */
+const CITY_LOD=[24,64];
+function cityLodAdd(g,key,xm,ym,a,h,kind){if(!(a>0))return;const L=g.lodA||(g.lodA=[new Map(),new Map()]);
+  for(let l=0;l<2;l++){const cs=CITY_LOD[l],id=key*1e8+Math.floor(xm/cs+5e3)*1e4+Math.floor(ym/cs+5e3);let c=L[l].get(id);
+    if(!c){c=[0,0,0,0,0,0,key];L[l].set(id,c)}c[0]+=a;c[1]+=a*h*h;c[2]+=a*xm;c[3]+=a*ym;if(kind===1)c[4]+=a;else if(kind===2)c[5]+=a}}
+function cityLodBuild(gl,g,t,wx,wy,rnd){const L=g.lodA;g.lodA=null;if(!L)return;g.lod=[];
+  for(let l=0;l<2;l++){const cs=CITY_LOD[l],byKey=new Map();
+    for(const c of L[l].values()){let a=byKey.get(c[6]);if(!a)byKey.set(c[6],a=[]);a.push(c)}
+    const n=L[l].size,I=new Float32Array(n*9),R=new Map();let k=0;
+    for(const[key,arr]of byKey){const off=k;
+      for(const c of arr){const A=c[0],xm=c[2]/A,ym=c[3]/A,x=wx(xm),y=wy(ym),hw=Math.min(Math.sqrt(A)/2,cs*.48),h=Math.sqrt(c[1]/A),kind=c[5]>A*.5?2:c[4]>A*.5?1:0;
+        I.set([x,y,hw,hw,0,h,gh(x,y),rnd()*97.3,kind],k*9);k++}
+      R.set(key,[off,k-off])}
+    const buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,I,gl.STATIC_DRAW);
+    const v=gl.createVertexArray();gl.bindVertexArray(v);gl.bindBuffer(gl.ARRAY_BUFFER,CITYL.boxBuf);
+    gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,16,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,1,gl.FLOAT,false,16,12);
+    gl.bindBuffer(gl.ARRAY_BUFFER,buf);for(const q of[2,3,4]){gl.enableVertexAttribArray(q);gl.vertexAttribDivisor(q,1)}
+    gl.vertexAttribPointer(2,4,gl.FLOAT,false,36,0);gl.vertexAttribPointer(3,4,gl.FLOAT,false,36,16);gl.vertexAttribPointer(4,1,gl.FLOAT,false,36,32);gl.bindVertexArray(null);
+    g.lod.push({v,buf,R})}
+  /* each chunk's footprint on the map, for choosing its level */
+  const b=t.wb,NX=g.NX,NY=g.NY,cw=(b[2]-b[0])/NX,chh=(b[3]-b[1])/NY;g.lk=[];
+  for(let key=0;key<NX*NY;key++){const i=key%NX,j=Math.floor(key/NX),x0=b[0]+i*cw,y0=b[1]+j*chh;g.lk.push([x0,y0,x0+cw,y0+chh,gh(x0+cw/2,y0+chh/2)])}
+  g.lv=new Uint8Array(NX*NY)}
+function cityLodPick(m,g){const px=m.F*DPR/M_PER_U,q=CK.q,T1=q>1?4:q>0?6:9,T2=q>1?4:q>0?5:7;
+  for(let key=0;key<g.lk.length;key++){const c=g.lk[key],z=c[4]*m.zs,d=Math.max(boxDist(m,c[0],c[1],z,c[2],c[3],z),1e-6);
+    g.lv[key]=12*px/d>=T1?0:CITY_LOD[0]*px/d>=T2?1:2}}
+function cityLodDraw(gl,m,g){const lv=g.lv;
+  for(let l=0;l<2;l++){const L=g.lod[l];let bound=false,o0=-1,n0=0;
+    const flush=()=>{if(n0>0){if(!bound){gl.bindVertexArray(L.v);gl.bindBuffer(gl.ARRAY_BUFFER,L.buf);bound=true}const o=o0*36;
+      gl.vertexAttribPointer(2,4,gl.FLOAT,false,36,o);gl.vertexAttribPointer(3,4,gl.FLOAT,false,36,o+16);gl.vertexAttribPointer(4,1,gl.FLOAT,false,36,o+32);gl.drawArraysInstanced(gl.TRIANGLES,0,30,n0)}n0=0};
+    /* neighbouring chunks at the same level go out as one draw */
+    for(const[key,r]of L.R){const c=g.lk[key],z=c[4]*m.zs;if(lv[key]!==l+1||!boxIn(m,c[0]-.03,c[1]-.03,z-.05,c[2]+.03,c[3]+.03,z+.1)){flush();continue}
+      if(n0>0&&o0+n0===r[0])n0+=r[1];else{flush();o0=r[0];n0=r[1]}}
+    flush()}
+  gl.bindVertexArray(null)}
 /* the frame-time governor: while the map moves, it keeps a running frame time; if the city pushes it past ~19.5 ms
    (under ~51 fps) for a moment, detail steps down (window dots only up close, then no trees and simpler windows;
    buildings themselves always stay); after a few seconds back under ~15 ms it steps up again. Settings → City can show the frame rate. */
@@ -2444,7 +2515,7 @@ function drawCityLabels(m){if(!m.P3||!cityOn()||CK.vis<.3)return;const a0=smooth
   for(const t of CITY_TILES){if(t.st!==3)continue;
     for(const L of t.g.labels){const q=p3v(m,L.x,L.y,L.base*m.zs+(L.h*CK.vis+14)/M_PER_U,m.D*40);
       if(!q||q[0]<-80||q[0]>W+80||q[1]<24||q[1]>H){L._cl=0;continue}
-      const ht=L.h>=100?Math.round(L.h)+" m":"",nw=mwidth(F1,L.n),hw=ht?mwidth(F2,ht)+6:0,bw=nw+hw+16,bh=21,bx=q[0]-bw/2,by=q[1]-bh-6,box=[bx,by,bw,bh+6];
+      const ht=L.sh===undefined?(L.h>=100?Math.round(L.h)+" m":""):L.sh?(L.h>=100?Math.round(L.h):Math.round(L.h*10)/10)+" m":"",nw=mwidth(F1,L.n),hw=ht?mwidth(F2,ht)+6:0,bw=nw+hw+16,bh=21,bx=q[0]-bw/2,by=q[1]-bh-6,box=[bx,by,bw,bh+6];
       const fits=!hit(box);if(fits){placed.push(box);LBL.push([box,"x",null])}
       const f=lfadeK(L,"_cl",fits?1:0);if(f<.01)continue;ctx.globalAlpha=a0*f;
       ctx.beginPath();ctx.roundRect?ctx.roundRect(bx,by,bw,bh,bh/2):ctx.rect(bx,by,bw,bh);ctx.fillStyle="rgba(10,14,22,.86)";ctx.fill();ctx.lineWidth=1;ctx.strokeStyle="rgba(255,255,255,.22)";ctx.stroke();
@@ -3035,7 +3106,9 @@ function buildSettings(){
       <input type="range" id="srl" min="1" max="10" step="0.5" value="${SET.relief}" ${SET.terrain?"":"disabled"} aria-label="Terrain height multiplier">
       <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>True height</span><span>×10</span></div></div>
     <h4>City</h4>
-    <label class="tg"><input type="checkbox" data-k="city" ${SET.city!==false?"checked":""}><span>3D buildings · Akasaka</span></label>
+    <label class="tg"><input type="checkbox" data-k="city" ${SET.city!==false?"checked":""}><span>3D buildings · Akasaka, Kyoto</span></label>
+    <label class="tg"><input type="checkbox" data-k="lantern" ${SET.lantern!==false?"checked":""}><span>Paper lanterns · Gion, Pontochō</span></label>
+    <label class="tg"><input type="checkbox" data-k="river" ${SET.river!==false?"checked":""}><span>Kamo River reflections</span></label>
     <label class="tg"><input type="checkbox" data-k="fps" ${SET.fps?"checked":""}><span>Show frame rate</span></label>
     <h4>Camera</h4><div class="seg"><button data-view="tilt" aria-pressed="${!P3ON()}">Tilt · 80°</button><button data-view="3d" aria-pressed="${P3ON()}" ${GLON||!(TW.ok||TW.failed)?"":"disabled style=\"opacity:.4\""}>3D camera</button></div>
     <p style="margin:6px 2px 0;font-size:11.5px;color:var(--muted)">${P3ON()?"Tilt right over with two fingers to stand on the ground and look across the hills.":"The flat map, tipped up to 80°."}</p></div>`;
