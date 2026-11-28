@@ -2035,7 +2035,7 @@ void main(){vec2 w=uW0+uWM*(vec2(gl_FragCoord.x,uH-gl_FragCoord.y)/uDpr);float c
  dotV3:`#version 300 es
 layout(location=0) in vec2 aP;layout(location=2) in float aH;layout(location=3) in float aR;layout(location=4) in float aC;
 layout(location=5) in float aRp;layout(location=6) in float aCp;layout(location=7) in float aBp;layout(location=8) in float aJ;
-uniform mat4 uVP;uniform vec3 uO,uE;uniform float uZs,uDpr,uF,uNear,uBias,uZa,uZb,uJit,uD,uKd,uLb,uZ,uTf,uBt,uSP,uPs,uPm;uniform vec2 uRes;uniform vec4 uClip;uniform vec3 uFog;uniform vec4 uCity;uniform float uCA;uniform vec4 uCT[24];uniform int uCN;uniform sampler2D uCM;uniform int uCMode,uPk;uniform vec4 uCMB;
+uniform mat4 uVP;uniform vec3 uO,uE;uniform float uZs,uDpr,uF,uNear,uBias,uZa,uZb,uJit,uD,uKd,uLb,uZ,uTf,uBt,uSP,uPs,uPm;uniform vec2 uRes;uniform vec4 uClip;uniform vec3 uFog;uniform vec4 uCity;uniform float uCA,uCOn,uNTon,uNTl;uniform vec4 uCT[24];uniform int uCN;uniform sampler2D uCM,uNT;uniform int uCMode,uPk;uniform vec4 uCMB,uNTB;
 flat out int vC;flat out int vCp;out float vA;out float vT;out float vHf;out float vR;
 ${DOTCOM}${DOTFX}
 void main(){vec2 p=aP*(1./128.);int ci=int(aC+.5),cp=int(aCp+.5);vC=ci;vCp=cp;vT=1.;vX=vec4(0.);vMul=1.;float aB=mod(aBp,16.);
@@ -2060,11 +2060,22 @@ void main(){vec2 p=aP*(1./128.);int ci=int(aC+.5),cp=int(aCp+.5);vC=ci;vCp=cp;vT
  /* under a 3D city the dots give way. The city's mask is feathered (~700 m), and across that edge each dot keeps or
     drops by its own fixed random number, so the countryside breaks up into the city like real suburbs instead of
     dimming as a sheet. Zooming out, the city hands back to the dots as a plain crossfade (uCA) */
- if(uCA>0.){float ce=min(min(w.x-uCity.x,uCity.z-w.x),min(w.y-uCity.y,uCity.w-w.y)),cv=0.;
+ if(uCOn>0.){float ce=min(min(w.x-uCity.x,uCity.z-w.x),min(w.y-uCity.y,uCity.w-w.y)),cv=0.;
   if(ce>0.&&uCMode==1){vec4 mk=textureLod(uCM,(w.xy-uCMB.xy)/(uCMB.zw-uCMB.xy),0.);int pk=int(mk.g*255.+.5);
-   if(pk<31&&((uPk>>pk)&1)==1)cv=smoothstep(.22,.88,mk.r);}
+   if(pk<31&&((uPk>>pk)&1)==1){cv=smoothstep(.22,.88,mk.r);}}
   else if(ce>0.){bool cov=false;for(int i=0;i<24;i++){if(i>=uCN)break;vec4 b=uCT[i];if(w.x>=b.x&&w.x<=b.z&&w.y>=b.y&&w.y<=b.w){cov=true;break;}}if(cov)cv=smoothstep(.05,.6,ce);}
-  if(cv>0.){float cu=cv*uCA;al*=mix(1.,clamp(((aJ+.5)/256.+.15-cv*1.3)*7.,0.,1.)*(1.-.3*cv),uCA);
+  /* zoomed out, the dots over a 3D city take the colour of the city itself seen from far off: its own street-level
+     ground (navy streets, dark green parks, the river), its roofs and the warm light of its streets and windows, baked
+     into one picture (cityNightBake) and read at the dots' own spacing, so it is the close-up city made smaller.
+     Its weight follows the same feathered mask that thins the dots up close, so parks and the countryside edge
+     keep the same share of land-cover dots as they do beside the close-up buildings. */
+  if(cv>0.&&uNTon>0.){float sp=uSP/(.25*exp2(Ld)),nl=log2(max(sp/uNTl,1.))-.5;vec4 nt=textureLod(uNT,(w.xy-uNTB.xy)/(uNTB.zw-uNTB.xy),max(nl,0.));
+   /* a share of the dots, more where it is busier, are the lit windows and lamps: warm specks like the close-up city */
+   vec3 nc=nt.rgb;float hs=fract((aJ+.5)*.6180339+fract(w.x*37.1+w.y*53.7)*.37),sk=step(hs,nt.a*.16);nc=mix(nc,vec3(1.,.66,.32),sk*.85);
+   float q=cv*uNTon;vX=vec4(nc,q);
+   if(uGp>.5)al*=1.-q;   /* the population glow stays off over a painted city */
+   else{rp*=(1.+.4*q)*(1.-.45*sk*q);vR=rp;vHf=rp+.75/uDpr;gl_PointSize=min(2.*vHf*uDpr*uPs,uPm);}}
+  if(cv>0.&&uCA>0.){float cu=cv*uCA;al*=mix(1.,clamp(((aJ+.5)/256.+.15-cv*1.3)*7.,0.,1.)*(1.-.3*cv),uCA);
    if(al<=0.){vA=0.;vHf=1.;vR=1.;gl_PointSize=0.;gl_Position=vec4(-2.,-2.,0.,1.);return;}
    rp*=1.-.4*cu;vR=rp;vHf=rp+.75/uDpr;gl_PointSize=min(2.*vHf*uDpr*uPs,uPm);}}   /* the dots that stay also shrink a little toward the city */
  vA=(1.-smoothstep(uFog.x,uFog.y,c.w)*.92)*al;
@@ -2238,7 +2249,10 @@ const GL={gl:null,lost:false,
     gl.uniform3f(u.uE,m.ex,m.ey,m.ez);gl.uniform1f(u.uD,m.D);gl.uniformMatrix2fv(u.uMi,false,[1,0,0,1]);gl.uniform1f(u.uPs,P===this.pGlow3?.5:1);gl.uniform1f(u.uPm,this.pm);gl.uniform1f(u.uKd,KD3);gl.uniform1f(u.uLb,LB3);gl.uniform1f(u.uSP,LT_SP);gl.uniform1f(u.uGrl,GRL);
     gl.uniform1f(u.uEx,EX());gl.uniform1f(u.uSl,smooth01((cam.tilt-.35)/.6));this.fxU(u);if(u.uCity){const cb=CITYL.fadeBox();gl.uniform4f(u.uCity,cb[0],cb[1],cb[2],cb[3]);gl.uniform1f(u.uCA,cb[4]*CK.cf);if(u.uCT){gl.uniform4fv(u.uCT,cb[5]);gl.uniform1i(u.uCN,cb[6])}
   if(u.uCM){const mb=cb[10];gl.activeTexture(gl.TEXTURE6);gl.bindTexture(gl.TEXTURE_2D,cb[7]||CITYL.white(gl));gl.uniform1i(u.uCM,6);gl.activeTexture(gl.TEXTURE0);
-   gl.uniform1i(u.uCMode,cb[8]);gl.uniform1i(u.uPk,cb[9]);gl.uniform4f(u.uCMB,mb[0],mb[1],mb[2],mb[3])}}};
+   gl.uniform1i(u.uCMode,cb[8]);gl.uniform1i(u.uPk,cb[9]);gl.uniform4f(u.uCMB,mb[0],mb[1],mb[2],mb[3])}
+  if(u.uCOn)gl.uniform1f(u.uCOn,cb[4]);
+  if(u.uNT){const nr=cb[11]&&CITYL.nt&&CITYL.nt[cb[11]],on=nr&&nr.tex?1:0;gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_2D,on?nr.tex:CITYL.white(gl));gl.uniform1i(u.uNT,7);gl.activeTexture(gl.TEXTURE0);
+   gl.uniform1f(u.uNTon,on?clamp((1-CK.cf)*2.5,0,1):0);if(on){gl.uniform4f(u.uNTB,nr.box[0],nr.box[1],nr.box[2],nr.box[3]);gl.uniform1f(u.uNTl,(nr.box[2]-nr.box[0])/nr.W)}}}};
   const pass=(P,r)=>{const u=P.u;gl.uniform1f(u.uGp,r===1?1:0);for(const it of list){const b=it[0];if(!b.n[r])continue;const k=it[3]/(LT_N*LT_SP),cl=it[5];
     gl.uniform3f(u.uO,it[1],it[2],k);gl.uniform1f(u.uA,it[4]);gl.uniform1f(u.uZ,it[8]);gl.uniform1f(u.uTf,it[9]);gl.uniform1f(u.uBt,it[10]);
     if(cl)gl.uniform4f(u.uClip,cl[0],cl[1],cl[2],cl[3]);else gl.uniform4f(u.uClip,-1,-1,1e6,1e6);
@@ -2265,7 +2279,7 @@ const GL={gl:null,lost:false,
      a few km         walls carry their windows' average glow; trees go (about 9 km), small-street lights fade (4–9 km),
                       main-road lights grow quieter instead of brighter
      9–25 km          buildings sink and drop out one by one (small first); the street-level ground crossfades back to
-                      the land-cover (or population) dots, so far off the city is the same soft patch as every other town
+                      the dots, which over the city are painted like a night photo from space (cityNightAdd)
    Where the city meets the countryside the mask is feathered (cityFeather) and the dots thin out across it.
    Terrain eases to true height as you zoom into a city, so buildings stand on the real ground, not ×10 hills.
    A quality governor (cityGov) watches the frame time while the map moves and trims detail to hold 60 fps. */
@@ -2351,14 +2365,53 @@ function cityEar(p){const n=p.length;if(n<3)return[];const V=[...Array(n).keys()
 /* where a city meets the countryside: its built-up mask (~20 m pixels) is blurred once on load (three box passes,
    ~700 m from all-city to all-country) and eased to nothing at the edge of the data, so the city ground fades in
    and the land-cover dots thin out across the same band, with no straight cut where the data stops */
-function cityFeather(im){const w=im.naturalWidth,h=im.naturalHeight,cv=document.createElement("canvas");cv.width=w;cv.height=h;
-  const cx=cv.getContext("2d",{willReadFrequently:true});cx.drawImage(im,0,0);const D=cx.getImageData(0,0,w,h),p=D.data,n=w*h,A=new Float32Array(n),B=new Float32Array(n),E=14,R=13,k=1/(2*R+1);
-  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;A[i]=x<E||y<E||x>=w-E||y>=h-E?0:p[i*4]/255}
+/* box blur of a float grid in place (T is scratch the same size), n passes of radius R (running sums, any R costs the same) */
+function cityBlur(A,T,w,h,R,n){const k=1/(2*R+1);
   const pass=(s,d,hz)=>{const L=hz?w:h,M=hz?h:w,st=hz?1:w,ls=hz?w:1;
     for(let j=0;j<M;j++){const o=j*ls;let acc=0;for(let i=-R;i<=R;i++)acc+=s[o+Math.min(L-1,Math.max(0,i))*st];
       for(let i=0;i<L;i++){d[o+i*st]=acc*k;acc+=s[o+Math.min(L-1,i+R+1)*st]-s[o+Math.max(0,i-R)*st]}}};
-  for(let r=0;r<3;r++){pass(A,B,true);pass(B,A,false)}
+  for(let r=0;r<n;r++){pass(A,T,true);pass(T,A,false)}}
+function cityFeather(im){const w=im.naturalWidth,h=im.naturalHeight,cv=document.createElement("canvas");cv.width=w;cv.height=h;
+  const cx=cv.getContext("2d",{willReadFrequently:true});cx.drawImage(im,0,0);const D=cx.getImageData(0,0,w,h),p=D.data,n=w*h,A=new Float32Array(n),E=14;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;A[i]=x<E||y<E||x>=w-E||y>=h-E?0:p[i*4]/255}
+  cityBlur(A,new Float32Array(n),w,h,13,3);
   for(let i=0;i<n;i++){p[i*4+2]=p[i*4];p[i*4]=Math.round(Math.min(1,A[i])*255);p[i*4+3]=255}return D}
+/* the far-off picture of a city, used to paint its dots when zoomed out. Each tile, as it is built, adds to a 30 m
+   grid over the whole city: its ground picture (the same one the close-up city lies on), its street lights (main roads
+   and expressways count more), its buildings' footprint and floor area (footprint × height, capped at 80 m). Once the
+   city has finished loading these are baked into one colour per cell, the way the close-up city averages out from a
+   distance: ground, roofs over the built share, and warm light from the streets and windows, a little more in the
+   dense core. Mipmapped, so the dots read it at their own spacing. Works for any city from its own tiles. */
+const CITY_NT_M=30;
+function cityNightAdd(t,d){try{const N=CITYL.nt||(CITYL.nt={});let r=N[t.cid];
+  if(!r){const b=t.ob,W=Math.max(8,Math.round((b[2]-b[0])*M_PER_U/CITY_NT_M)),H=Math.max(8,Math.round((b[3]-b[1])*M_PER_U/CITY_NT_M)),cv=document.createElement("canvas");cv.width=W;cv.height=H;
+    r=N[t.cid]={box:b.slice(),W,H,L:new Float32Array(W*H),B:new Float32Array(W*H),F:new Float32Array(W*H),cx:cv.getContext("2d",{willReadFrequently:true}),pend:0,tex:null,px:null,dirty:false,t:0}}
+  const K=COSL*SCALE,b=r.box,sx=r.W/(b[2]-b[0]),sy=r.H/(b[3]-b[1]),A2=CITY_NT_M*CITY_NT_M,gx=xm=>((xm/d.kx+d.lon0-129)*K-b[0])*sx,gy=ym=>((46-(ym/d.ky+d.lat0))*SCALE-b[1])*sy;
+  const at=(xm,ym)=>{const X=Math.floor(gx(xm)),Y=Math.floor(gy(ym));return X<0||Y<0||X>=r.W||Y>=r.H?-1:Y*r.W+X};
+  const Li=d.lights||[];for(let i=0;i+3<Li.length;i+=4){const j=at(Li[i]/10,Li[i+1]/10),k=Li[i+3];if(j>=0)r.L[j]+=k===0?1:k===1?1.6:2}
+  const Bx=d.box||[];for(let o=0;o+6<Bx.length;o+=7){const j=at(Bx[o]/10,Bx[o+1]/10);if(j<0)continue;const a=4*(Bx[o+2]/10)*(Bx[o+3]/10)/A2;r.F[j]+=a;r.B[j]+=a*Math.min(Bx[o+5]/10,80)}
+  for(const q of d.poly||[]){let n=0,cx=0,cy=0,ar=0;for(let i=2;i+1<q.length;i+=2){const ax=q[i]/10,ay=q[i+1]/10,k=i+2<q.length?i+2:2,bx=q[k]/10,by=q[k+1]/10;cx+=ax;cy+=ay;n++;ar+=ax*by-bx*ay}
+    if(n<3)continue;const j=at(cx/n,cy/n);if(j<0)continue;const a=Math.abs(ar)/2/A2;r.F[j]+=a;r.B[j]+=a*Math.min(q[1]/10,80)}
+  const src=d.glo||d.ground;if(src&&d.ext){const e=d.ext.map(v=>v/10),X0=gx(e[0]),X1=gx(e[2]),Y0=gy(e[3]),Y1=gy(e[1]),im=new Image();r.pend++;
+    im.onload=()=>{try{r.cx.drawImage(im,X0,Y0,X1-X0,Y1-Y0)}catch(e){}r.pend--;r.dirty=true;r.t=performance.now();invalidate()};im.onerror=()=>{r.pend--};im.src=src}
+  r.dirty=true;r.t=performance.now()}catch(e){console.warn("city night map:",e)}}
+function cityNightBake(r){const W=r.W,H=r.H,n=W*H,l=Float32Array.from(r.L),b=Float32Array.from(r.B),f=Float32Array.from(r.F),e=new Float32Array(n),T=new Float32Array(n),G=r.cx.getImageData(0,0,W,H).data;
+  cityBlur(l,T,W,H,1,2);cityBlur(b,T,W,H,1,2);cityBlur(f,T,W,H,1,1);
+  for(let i=0;i<n;i++){const a=1-Math.exp(-l[i]/4),c=1-Math.exp(-b[i]/7);l[i]=a;b[i]=c;e[i]=a*.4+c*.6+a*c*.2}
+  const hh=Float32Array.from(e);cityBlur(hh,T,W,H,12,2);
+  const C=CITY_PAINT,px=new Uint8Array(n*4),s3=(a,b,x)=>{const t=Math.min(1,Math.max(0,(x-a)/(b-a)));return t*t*(3-2*t)};
+  for(let i=0;i<n;i++){const o=i*4,ga=G[o+3]/255,cov=Math.min(.85,f[i])*C.roof,em=e[i]*(.85+.4*s3(.12,.42,hh[i])),k=s3(.04,.8,em);
+    for(let c=0;c<3;c++){const g=(G[o+c]/255*C.gain)*ga+C.navy[c]*(1-ga),base=g+(C.roofC[c]-g)*cov;px[o+c]=Math.min(1,base+C.lit[c]*k*k+C.core[c]*s3(.55,1,em))*255+.5}px[o+3]=Math.min(1,em)*255+.5}
+  r.px=px;r.dirty=false}
+/* the colours of the far-off city, set to match how the close-up city averages out on screen */
+const CITY_PAINT={gain:2,navy:[.06,.075,.115],roofC:[.15,.185,.255],roof:1,lit:[.07,.035,.012],core:[.04,.03,.018]};
+function cityNightWork(gl){if(!CITYL.nt)return;const now=performance.now();
+  for(const cid in CITYL.nt){const r=CITYL.nt[cid];
+    if(r.dirty&&!r.pend&&(now-r.t>2500||!CITY_TILES.some(t=>t.cid===cid&&(t.st===1||t.st===2)))){try{cityNightBake(r)}catch(e){console.warn("city night map:",e);r.dirty=false;continue}if(r.tex){gl.deleteTexture(r.tex);r.tex=null}}
+    if(!r.tex&&r.px){const tx=gl.createTexture();gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_2D,tx);gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);
+      gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,r.W,r.H,0,gl.RGBA,gl.UNSIGNED_BYTE,r.px);gl.generateMipmap(gl.TEXTURE_2D);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.activeTexture(gl.TEXTURE0);r.tex=tx;invalidate()}}}
 const CITYL={progs:null,drawn:false,fpsEl:null,fpsT:0,
  /* the nearest city with a tile loaded: its outer box (the fade edge) and every loaded tile of it (the dots give way there) */
  fadeBox(){let best=null,bd=1e9;for(const t of CITY_TILES){if(t.st!==3)continue;const b=t.wb,d=Math.hypot(Math.max(b[0]-cam.x,0,cam.x-b[2]),Math.max(b[1]-cam.y,0,cam.y-b[3]));if(d<bd){bd=d;best=t}}
@@ -2367,7 +2420,7 @@ const CITYL={progs:null,drawn:false,fpsEl:null,fpsT:0,
    const cm=best&&this.cm&&this.cm[best.cid];let pk=0;
    if(cm&&cm.tex){const all=new Map();for(const t of CITY_TILES)if(t.cid===best.cid&&t.pk!==undefined)all.set(t.pk,(all.get(t.pk)??true)&&t.st===3);for(const[k,v]of all)if(v)pk|=1<<k}
    const mm=cm&&cm.tex?1:0,mb=cm&&cm.tex?cm.box:[0,0,1,1];
-   return best&&cityOn()?[best.ob[0],best.ob[1],best.ob[2],best.ob[3],1,L,n,mm?cm.tex:null,mm,pk,mb]:[0,0,0,0,0,L,0,null,0,0,mb]},
+   return best&&cityOn()?[best.ob[0],best.ob[1],best.ob[2],best.ob[3],1,L,n,mm?cm.tex:null,mm,pk,mb,best.cid]:[0,0,0,0,0,L,0,null,0,0,mb,null]},
  white(gl){if(!this.wt||this.wtGl!==gl){this.wtGl=gl;this.wt=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,this.wt);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([255,0,0,255]))}return this.wt},
  /* a masked city: R = how much city ground shows (soft edges), G = which file covers it */
  mask(j,cid){if(!j.mask||!j.mll)return;this.cm=this.cm||{};if(this.cm[cid])return;const a=P(j.mll[0],j.mll[3]),b=P(j.mll[2],j.mll[1]),rec=this.cm[cid]={box:[a[0],a[1],b[0],b[1]],tex:null,src:j.mask};this.maskTex(rec)},
@@ -2393,9 +2446,9 @@ const CITYL={progs:null,drawn:false,fpsEl:null,fpsT:0,
     quad([1,-1,0],[1,1,0],[1,1,1],[1,-1,1],0);quad([-1,1,0],[-1,-1,0],[-1,-1,1],[-1,1,1],1);quad([1,1,0],[-1,1,0],[-1,1,1],[1,1,1],2);
     quad([-1,-1,0],[1,-1,0],[1,-1,1],[-1,-1,1],3);quad([-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1],4);
     this.boxBuf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,this.boxBuf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(v),gl.STATIC_DRAW);
-    if(!this.hooked){this.hooked=true;GLC.addEventListener("webglcontextrestored",()=>{CITYL.progs=null;CITYL.wt=null;CITYL.nChunks=0;CITYL.nHi=0;CITYL.cq=[];if(CITYL.cm)for(const k in CITYL.cm){CITYL.cm[k].tex=null;CITYL.maskTex(CITYL.cm[k])}for(const t of CITY_TILES)if(t.st===3)t.st=t.data?2:0})}
+    if(!this.hooked){this.hooked=true;GLC.addEventListener("webglcontextrestored",()=>{CITYL.progs=null;CITYL.wt=null;CITYL.nChunks=0;if(CITYL.nt)for(const k in CITYL.nt)CITYL.nt[k].tex=null;CITYL.nHi=0;CITYL.cq=[];if(CITYL.cm)for(const k in CITYL.cm){CITYL.cm[k].tex=null;CITYL.maskTex(CITYL.cm[k])}for(const t of CITY_TILES)if(t.st===3)t.st=t.data?2:0})}
     return true}catch(e){console.warn("city layer off:",e);SET.city=false;return false}},
- build(gl,t){if(t.data.lazy&&!t.sub)return cityBuildLazy(gl,t);const d=t.data,K=COSL*SCALE,wx=x=>(x/d.kx+d.lon0-129)*K,wy=y=>(46-(y/d.ky+d.lat0))*SCALE,MX=d.kx/K,MY=d.ky/SCALE;
+ build(gl,t){if(!t.sub&&!t.ntDone){t.ntDone=true;cityNightAdd(t,t.data)}if(t.data.lazy&&!t.sub)return cityBuildLazy(gl,t);const d=t.data,K=COSL*SCALE,wx=x=>(x/d.kx+d.lon0-129)*K,wy=y=>(46-(y/d.ky+d.lat0))*SCALE,MX=d.kx/K,MY=d.ky/SCALE;
   let sd=987654321;const rnd=()=>{sd=(sd*16807)%2147483647;return sd/2147483647};
   const g={chunks:[],labels:[],lv:null,riv:!!d.riv},b=t.wb,LOD=!!d.lod;
   /* generated buildings: one instance each, sorted into ~600 m chunks so the ones off screen are skipped */
@@ -2480,7 +2533,7 @@ const CITYL={progs:null,drawn:false,fpsEl:null,fpsT:0,
  solid(gl,m,VP,FG,HZ){this.drawn=false;if(!cityOn())return;if(m.D*M_PER_U<150000)this.want(m);
   for(const t of CITY_TILES)if(t.st===2&&GQ8&&this.init(gl)){try{t.g=this.build(gl,t);t.st=3;if(t.data.lod)t.data=null}catch(e){console.warn(e);t.st=-1;t.retry=Date.now()+6e5}
     if(CITY_TILES.some(u=>u.st===2))invalidate();break}
-  const Pg=this.progs;if(!Pg)return;let any=false;cityChunkWork(gl);
+  const Pg=this.progs;if(!Pg)return;let any=false;cityChunkWork(gl);cityNightWork(gl);
   const set=(P,t)=>{const u=P.u;gl.useProgram(P.p);gl.uniformMatrix4fv(u.uVP,false,VP);if(u.uZs)gl.uniform1f(u.uZs,m.zs);if(u.uMpu)gl.uniform1f(u.uMpu,M_PER_U);
     if(u.uBox)gl.uniform4f(u.uBox,t.ob[0],t.ob[1],t.ob[2],t.ob[3]);if(u.uRise)gl.uniform1f(u.uRise,1);if(u.uA)gl.uniform1f(u.uA,1);if(u.uKeep)gl.uniform1f(u.uKeep,CK.bf);if(u.uDm)gl.uniform1f(u.uDm,CK.dm);if(u.uFar)gl.uniform1f(u.uFar,cs01((CK.dm-3000)/20000));if(u.uHz)gl.uniform3f(u.uHz,HZ[0],HZ[1],HZ[2]);
     if(u.uFog)gl.uniform3f(u.uFog,FG[0],FG[1],FG[2]);if(u.uDet)gl.uniform1f(u.uDet,CK.q>1?1:CK.q>0?.5:.3);if(u.uM)gl.uniform2f(u.uM,t.g.MX,t.g.MY);if(u.uPS)gl.uniform1f(u.uPS,m.F*DPR);if(u.uDpr)gl.uniform1f(u.uDpr,DPR);if(u.uRiv)gl.uniform1f(u.uRiv,t.g.riv&&SET.river!==false?1:0)};
