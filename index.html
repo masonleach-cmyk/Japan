@@ -1229,11 +1229,17 @@ for(const t of CITY_TILES){const a=P(t.ll[0],t.ll[3]),b=P(t.ll[2],t.ll[1]);t.wb=
 /* a city split into tiles (Kyoto) fades only at the outer edge of the whole city, never between its tiles */
 for(const t of CITY_TILES){const g=CITY_TILES.filter(u=>u.cid===t.cid);t.ob=[Math.min(...g.map(u=>u.wb[0])),Math.min(...g.map(u=>u.wb[1])),Math.max(...g.map(u=>u.wb[2])),Math.max(...g.map(u=>u.wb[3]))]}
 const cs01=t=>{t=t<0?0:t>1?1:t;return t*t*(3-2*t)};
-const CK={near:0,flat:0,vis:0,q:2,ema:16.7,slow:0,fast:0,dm:1e9};   /* vis: how close the camera is (labels, glow hand-off); buildings never switch off */
+const CK={near:0,flat:0,vis:0,q:2,ema:16.7,slow:0,fast:0,dm:1e9,cf:1,bf:1};   /* vis: how close the camera is (labels, glow hand-off); buildings never switch off */
 function cityNear(x,y){let k=0;for(const t of CITY_TILES){const b=t.wb,d=Math.hypot(Math.max(b[0]-x,0,x-b[2]),Math.max(b[1]-y,0,y-b[3]));k=Math.max(k,1-cs01(d/1.3))}return k}
 const cityOn=()=>SET.city!==false&&P3ON();
-function cityUpd(){if(!cityOn()){CK.near=CK.flat=CK.vis=0;return}const Dm=FOC()/cam.s*M_PER_U;CK.dm=Dm;
-  CK.near=cityNear(cam.x,cam.y);CK.vis=1-cs01((Dm-6500)/6000);CK.flat=CK.near*(1-cs01((Dm-9000)/11000))}
+/* the city hands back to the dot map as you zoom out, like a city seen from space:
+     cf  the city ground and the dots giving way under it: full to 9 km, a crossfade back to the land-cover dots by 25 km
+     bf  buildings: each sinks into the ground and drops out, small ones first, between 8.5 and 21 km
+   The same curves work for every city, so new cities need nothing extra. */
+const CITY_FAR={cf0:9000,cf1:25000,bf0:8500,bf1:21000};
+function cityUpd(){if(!cityOn()){CK.near=CK.flat=CK.vis=0;CK.cf=CK.bf=0;return}const Dm=FOC()/cam.s*M_PER_U,F=CITY_FAR;CK.dm=Dm;
+  CK.near=cityNear(cam.x,cam.y);CK.vis=1-cs01((Dm-6500)/6000);CK.flat=CK.near*(1-cs01((Dm-9000)/11000));
+  CK.cf=1-cs01((Dm-F.cf0)/(F.cf1-F.cf0));CK.bf=1-cs01((Dm-F.bf0)/(F.bf1-F.bf0))}
 /* near a city the 3D camera may come down to street level (about 140 m away) */
 function smax(){return cityOn()?S_MAX+(Math.max(S_MAX,FOC()*M_PER_U/140)-S_MAX)*cityNear(cam.x,cam.y):S_MAX}
 let Mx={a:1,b:0,c:0,d:1,e:0,f:0};
@@ -2051,10 +2057,16 @@ void main(){vec2 p=aP*(1./128.);int ci=int(aC+.5),cp=int(aCp+.5);vC=ci;vCp=cp;vT
  float rp=min(r*exp2(Lr-zc+1.)/sqrt(1.+3.*gc*gc),r*2.6)*gv,rd=rp*uDpr;
  if(rd<.6){al*=rd*rd/.36;rp=.6/uDpr;}
  vR=rp;vHf=rp+.75/uDpr;gl_PointSize=min(2.*vHf*uDpr*uPs,uPm);
- if(uCA>0.){float ce=min(min(w.x-uCity.x,uCity.z-w.x),min(w.y-uCity.y,uCity.w-w.y));
+ /* under a 3D city the dots give way. The city's mask is feathered (~700 m), and across that edge each dot keeps or
+    drops by its own fixed random number, so the countryside breaks up into the city like real suburbs instead of
+    dimming as a sheet. Zooming out, the city hands back to the dots as a plain crossfade (uCA) */
+ if(uCA>0.){float ce=min(min(w.x-uCity.x,uCity.z-w.x),min(w.y-uCity.y,uCity.w-w.y)),cv=0.;
   if(ce>0.&&uCMode==1){vec4 mk=textureLod(uCM,(w.xy-uCMB.xy)/(uCMB.zw-uCMB.xy),0.);int pk=int(mk.g*255.+.5);
-   if(pk<31&&((uPk>>pk)&1)==1)al*=1.-uCA*smoothstep(0.,.23,ce)*mk.r;}
-  else if(ce>0.){bool cov=false;for(int i=0;i<24;i++){if(i>=uCN)break;vec4 b=uCT[i];if(w.x>=b.x&&w.x<=b.z&&w.y>=b.y&&w.y<=b.w){cov=true;break;}}if(cov)al*=1.-uCA*smoothstep(0.,.23,ce);}}
+   if(pk<31&&((uPk>>pk)&1)==1)cv=smoothstep(.22,.88,mk.r);}
+  else if(ce>0.){bool cov=false;for(int i=0;i<24;i++){if(i>=uCN)break;vec4 b=uCT[i];if(w.x>=b.x&&w.x<=b.z&&w.y>=b.y&&w.y<=b.w){cov=true;break;}}if(cov)cv=smoothstep(.05,.6,ce);}
+  if(cv>0.){float cu=cv*uCA;al*=mix(1.,clamp(((aJ+.5)/256.+.15-cv*1.3)*7.,0.,1.)*(1.-.3*cv),uCA);
+   if(al<=0.){vA=0.;vHf=1.;vR=1.;gl_PointSize=0.;gl_Position=vec4(-2.,-2.,0.,1.);return;}
+   rp*=1.-.4*cu;vR=rp;vHf=rp+.75/uDpr;gl_PointSize=min(2.*vHf*uDpr*uPs,uPm);}}   /* the dots that stay also shrink a little toward the city */
  vA=(1.-smoothstep(uFog.x,uFog.y,c.w)*.92)*al;
  float vb=max(uNear,c.w*(1.-uBias));c.z=(uZa*vb+uZb)/vb*c.w;gl_Position=c;}`,
  dotF3:`#version 300 es
@@ -2224,7 +2236,7 @@ const GL={gl:null,lost:false,
   const use=P=>{const u=P.u;gl.useProgram(P.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform2f(u.uRes,W,H);gl.uniform1f(u.uDpr,DPR);gl.uniform1f(u.uZs,m.zs);gl.uniform1f(u.uF,m.F);gl.uniform1f(u.uNear,near);
     gl.uniform1f(u.uBias,.006);gl.uniform1f(u.uJit,.8*smooth01((cam.tilt-.55)/.6));gl.uniform1f(u.uZa,za);gl.uniform1f(u.uZb,zb);gl.uniform3f(u.uFog,m.fs,m.fe,0);if(u.uPal)gl.uniform3fv(u.uPal,this.P);
     gl.uniform3f(u.uE,m.ex,m.ey,m.ez);gl.uniform1f(u.uD,m.D);gl.uniformMatrix2fv(u.uMi,false,[1,0,0,1]);gl.uniform1f(u.uPs,P===this.pGlow3?.5:1);gl.uniform1f(u.uPm,this.pm);gl.uniform1f(u.uKd,KD3);gl.uniform1f(u.uLb,LB3);gl.uniform1f(u.uSP,LT_SP);gl.uniform1f(u.uGrl,GRL);
-    gl.uniform1f(u.uEx,EX());gl.uniform1f(u.uSl,smooth01((cam.tilt-.35)/.6));this.fxU(u);if(u.uCity){const cb=CITYL.fadeBox();gl.uniform4f(u.uCity,cb[0],cb[1],cb[2],cb[3]);gl.uniform1f(u.uCA,P===this.pGlow3?cb[4]*CK.vis:cb[4]);if(u.uCT){gl.uniform4fv(u.uCT,cb[5]);gl.uniform1i(u.uCN,cb[6])}
+    gl.uniform1f(u.uEx,EX());gl.uniform1f(u.uSl,smooth01((cam.tilt-.35)/.6));this.fxU(u);if(u.uCity){const cb=CITYL.fadeBox();gl.uniform4f(u.uCity,cb[0],cb[1],cb[2],cb[3]);gl.uniform1f(u.uCA,cb[4]*CK.cf);if(u.uCT){gl.uniform4fv(u.uCT,cb[5]);gl.uniform1i(u.uCN,cb[6])}
   if(u.uCM){const mb=cb[10];gl.activeTexture(gl.TEXTURE6);gl.bindTexture(gl.TEXTURE_2D,cb[7]||CITYL.white(gl));gl.uniform1i(u.uCM,6);gl.activeTexture(gl.TEXTURE0);
    gl.uniform1i(u.uCMode,cb[8]);gl.uniform1i(u.uPk,cb[9]);gl.uniform4f(u.uCMB,mb[0],mb[1],mb[2],mb[3])}}};
   const pass=(P,r)=>{const u=P.u;gl.uniform1f(u.uGp,r===1?1:0);for(const it of list){const b=it[0];if(!b.n[r])continue;const k=it[3]/(LT_N*LT_SP),cl=it[5];
@@ -2248,29 +2260,33 @@ const GL={gl:null,lost:false,
    as rotated boxes sharing one box shape (36 bytes each on the GPU), the rest with their true outlines; landmark
    outlines at their real heights, street lights, trees and a ground texture with the real streets. Heights come from
    OpenStreetMap where mapped (about 1 in 10), otherwise each 100 m area's buildings are set to its real average.
-   The city never switches off; it gets simpler with distance:
+   The city gets simpler with distance, then hands back to the dot map like a city seen from space:
      close            every window is its own dot (once a few px on screen), trees, every street light, landmark labels
-     a few km         walls carry their windows' average glow; trees go (about 9 km), small-street lights fade (4–9 km)
-     far              plain boxes with brighter roofs so the shapes still read, the main-road and expressway lights
-                      tracing the big roads, and the population glow laid back over the city as it was before
-   The land-cover dots under the city always give way to its street-level ground.
+     a few km         walls carry their windows' average glow; trees go (about 9 km), small-street lights fade (4–9 km),
+                      main-road lights grow quieter instead of brighter
+     9–25 km          buildings sink and drop out one by one (small first); the street-level ground crossfades back to
+                      the land-cover (or population) dots, so far off the city is the same soft patch as every other town
+   Where the city meets the countryside the mask is feathered (cityFeather) and the dots thin out across it.
    Terrain eases to true height as you zoom into a city, so buildings stand on the real ground, not ×10 hills.
    A quality governor (cityGov) watches the frame time while the map moves and trims detail to hold 60 fps. */
 const CITY_GLSL={
  bV:`#version 300 es
 layout(location=0) in vec3 aV;layout(location=1) in float aF;layout(location=2) in vec4 iA;layout(location=3) in vec4 iB;layout(location=4) in float iK;
-uniform mat4 uVP;uniform float uZs,uRise,uMpu;uniform vec2 uM;uniform vec4 uBox;
+uniform mat4 uVP;uniform float uZs,uRise,uMpu,uKeep;uniform vec2 uM;uniform vec4 uBox;
 out vec2 vUV;out vec2 vN;out vec3 vK;out float vW;out float vRoof;out float vZ0;
-void main(){float c=cos(iB.x),s=sin(iB.x),kd=iK-10.*floor(iK*.1+.05),z0=floor(iK*.1+.05)*.1;vZ0=z0;vec2 l=aV.xy*iA.zw,e=vec2(l.x*c-l.y*s,l.x*s+l.y*c),wp=iA.xy+vec2(e.x/uM.x,-e.y/uM.y);
- float ed=min(min(wp.x-uBox.x,uBox.z-wp.x),min(wp.y-uBox.y,uBox.w-wp.y)),rise=uRise*smoothstep(0.,.23,ed),H=iB.y;
+void main(){float c=cos(iB.x),s=sin(iB.x),kd=iK-10.*floor(iK*.1+.05),z0=floor(iK*.1+.05)*.1;vZ0=z0;
+ float H=iB.y,vk=clamp((uKeep*(1.2+H/90.+(kd>2.5?.15:0.))-fract(iB.w*.61803+.21))*5.,0.,1.);if(vk<.02){gl_Position=vec4(2.,2.,2.,1.);return;}
+ vec2 l=aV.xy*iA.zw,e=vec2(l.x*c-l.y*s,l.x*s+l.y*c),wp=iA.xy+vec2(e.x/uM.x,-e.y/uM.y);
+ float ed=min(min(wp.x-uBox.x,uBox.z-wp.x),min(wp.y-uBox.y,uBox.w-wp.y)),rise=uRise*smoothstep(0.,.23,ed)*vk;
  vec4 cp=uVP*vec4(wp,iB.z*uZs+(aV.z>.5?H*rise:z0>0.?z0*rise:-40.)/uMpu,1.);gl_Position=cp;vW=cp.w;
  int f=int(aF+.5);vec2 nl=f==0?vec2(1,0):f==1?vec2(-1,0):f==2?vec2(0,1):f==3?vec2(0,-1):vec2(0);vN=vec2(nl.x*c-nl.y*s,nl.x*s+nl.y*c);
  float u=(f<2?l.y:l.x)*(f==1||f==2?-1.:1.)+float(f)*31.7;vUV=vec2(u,aV.z>.5?H:z0>0.?z0:-40.);vRoof=f==4?1.:0.;vK=vec3(iB.w,kd,H);}`,
  lV:`#version 300 es
 layout(location=0) in vec3 aP;layout(location=1) in vec4 aU;layout(location=2) in vec3 aB;
-uniform mat4 uVP;uniform float uZs,uRise,uMpu;uniform vec4 uBox;
+uniform mat4 uVP;uniform float uZs,uRise,uMpu,uKeep;uniform vec4 uBox;
 out vec2 vUV;out vec2 vN;out vec3 vK;out float vW;out float vRoof;out float vZ0;
 void main(){float ed=min(min(aP.x-uBox.x,uBox.z-aP.x),min(aP.y-uBox.y,uBox.w-aP.y)),rise=uRise*smoothstep(0.,.23,ed),H=aU.w,kd=aB.z-10.*floor(aB.z*.1+.05),z0=floor(aB.z*.1+.05)*.1;vZ0=z0;
+ float vk=clamp((uKeep*(1.2+H/90.+(kd>2.5?.15:0.))-fract(aB.y*.61803+.21))*5.,0.,1.);if(vk<.02){gl_Position=vec4(2.,2.,2.,1.);return;}rise*=vk;
  vec4 cp=uVP*vec4(aP.xy,aB.x*uZs+(aP.z>.5?H*rise:z0>0.?z0*rise:-40.)/uMpu,1.);gl_Position=cp;vW=cp.w;
  vRoof=(aU.y==0.&&aU.z==0.)?1.:0.;vN=aU.yz;vUV=vec2(aU.x,aP.z>.5?H:z0>0.?z0:-40.);vK=vec3(aB.y,kd,H);}`,
  bF:`#version 300 es
@@ -2300,23 +2316,24 @@ layout(location=0) in vec3 aP;layout(location=1) in vec2 aT;uniform mat4 uVP;uni
 void main(){vT=aT;vWp=aP.xy;vec4 cp=uVP*vec4(aP.xy,aP.z*uZs+.6/uMpu,1.);gl_Position=cp;vW=cp.w;}`,
  gF:`#version 300 es
 precision highp float;in vec2 vT;in vec2 vWp;in float vW;out vec4 o;uniform sampler2D uTex,uCM;uniform float uA,uRiv;uniform int uCMode;uniform vec4 uBox,uCMB;uniform vec3 uHz,uFog;
-void main(){float ed=min(min(vWp.x-uBox.x,uBox.z-vWp.x),min(vWp.y-uBox.y,uBox.w-vWp.y)),a=uA*smoothstep(0.,.23,ed);if(uCMode==1)a*=texture(uCM,(vWp-uCMB.xy)/(uCMB.zw-uCMB.xy)).r;if(a<=0.)discard;
+void main(){float ed=min(min(vWp.x-uBox.x,uBox.z-vWp.x),min(vWp.y-uBox.y,uBox.w-vWp.y)),a=uA*smoothstep(0.,uCMode==1?.23:.45,ed);if(uCMode==1)a*=smoothstep(.1,.62,texture(uCM,(vWp-uCMB.xy)/(uCMB.zw-uCMB.xy)).r);if(a<=0.)discard;
  vec3 c=texture(uTex,vT).rgb*1.55;
  if(uRiv>0.&&c.b>.16&&c.b>c.r*2.8){vec2 lp=(vWp-uBox.xy)*1111.95;float rp=lp.y*.9+sin(lp.x*.35)*2.,fw=fwidth(rp);c+=uRiv*(vec3(.005,.012,.022)*sin(rp)*(1.-smoothstep(.4,1.6,fw))+vec3(.012,.02,.032));}
  c=mix(c,uHz,smoothstep(uFog.x,uFog.y,vW)*uFog.z);o=vec4(c*a,a);}`,
  pV:`#version 300 es
-layout(location=0) in vec4 aP;layout(location=1) in vec3 aS;uniform mat4 uVP;uniform float uZs,uMpu,uPS,uA,uDpr,uDm,uLan,uRiv;uniform vec4 uBox;
+layout(location=0) in vec4 aP;layout(location=1) in vec3 aS;uniform mat4 uVP;uniform float uZs,uMpu,uPS,uA,uDpr,uDm,uLan,uRiv,uKeep;uniform vec4 uBox;
 out vec3 vC;out float vA;flat out float vTy;flat out float vSd;
 float h1(float x){return fract(sin(x*91.7)*43758.5);}
 void main(){float sz=aS.x,ty=aS.y,sd=aS.z,ed=min(min(aP.x-uBox.x,uBox.z-aP.x),min(aP.y-uBox.y,uBox.w-aP.y)),ef=smoothstep(0.,.23,ed),a=uA*ef;
- if(ty<.5)a*=1.-smoothstep(4000.,9000.,uDm);else if(ty>2.5&&ty<3.5)a*=1.-smoothstep(6500.,9000.,uDm);else if(ty<2.5)a*=1.+1.6*smoothstep(4000.,20000.,uDm);   /* main roads read further out */
+ if(ty<.5)a*=1.-smoothstep(4000.,9000.,uDm);else if(ty>2.5&&ty<3.5)a*=1.-smoothstep(6500.,9000.,uDm);else if(ty<2.5)a*=(1.-.55*smoothstep(3000.,14000.,uDm))*(1.-smoothstep(14000.,30000.,uDm));   /* main roads: quieter with distance, gone once the city has handed back to the dots */
+ else if(ty>3.5&&ty<6.5)a*=smoothstep(0.,.35,uKeep);
  else if(ty>6.5&&ty<7.5)a*=uLan*(1.-smoothstep(3500.,7000.,uDm));else if(ty>7.5)a*=uRiv*.8*(1.-smoothstep(3000.,7000.,uDm));
  bool up=ty>3.5&&ty<6.5;vec4 cp=uVP*vec4(aP.xy,aP.w*uZs+aP.z*(up?a:1.)/uMpu,1.);gl_Position=cp;
  vec3 c;if(ty<.5)c=vec3(1.,.6,.24);else if(ty<1.5)c=vec3(1.,.7,.36);else if(ty<2.5)c=vec3(.92,.86,.72);
  else if(ty<3.5){float r=h1(sd);c=r<.66?mix(vec3(.035,.085,.05),vec3(.055,.12,.065),h1(sd+1.)):r<.86?vec3(.19,.16,.045):vec3(.19,.065,.04);}
  else if(ty<4.5)c=vec3(1.,.14,.09);else if(ty<5.5)c=vec3(1.,.5,.16);else if(ty<6.5)c=vec3(.75,.7,.62);else if(ty<7.5)c=vec3(1.,.42,.15);else if(ty<8.5)c=vec3(1.,.66,.32);else c=vec3(1.,.4,.16);
  float ps=sz/uMpu*uPS/max(cp.w,1e-5);
- if(ty<2.5||ty>3.5){float mn=(ty>3.5?2.2:1.6)*uDpr;a*=clamp(ps/mn,.25,1.);ps=max(ps,mn);}else ps=max(ps,uDpr);
+ if(ty<2.5||ty>3.5){float mn=(ty>3.5?2.2:1.6)*uDpr,k=clamp(ps/mn,0.,1.);a*=ty<2.5?max(k*sqrt(k),.05):max(k,.25);ps=max(ps,mn);}else ps=max(ps,uDpr);
  gl_PointSize=min(ps,(ty>2.5&&ty<3.5?44.:22.)*uDpr);vC=c;vA=a;vTy=ty;vSd=sd;}`,
  pF:`#version 300 es
 precision highp float;in vec3 vC;in float vA;flat in float vTy;flat in float vSd;out vec4 o;
@@ -2331,6 +2348,17 @@ function cityEar(p){const n=p.length;if(n<3)return[];const V=[...Array(n).keys()
       if(ok){out.push(a,b,c);V.splice(i,1);found=true;break}}
     if(!found)break}
   if(V.length===3)out.push(V[0],V[1],V[2]);else for(let i=1;i<V.length-1;i++)out.push(V[0],V[i],V[i+1]);return out}
+/* where a city meets the countryside: its built-up mask (~20 m pixels) is blurred once on load (three box passes,
+   ~700 m from all-city to all-country) and eased to nothing at the edge of the data, so the city ground fades in
+   and the land-cover dots thin out across the same band, with no straight cut where the data stops */
+function cityFeather(im){const w=im.naturalWidth,h=im.naturalHeight,cv=document.createElement("canvas");cv.width=w;cv.height=h;
+  const cx=cv.getContext("2d",{willReadFrequently:true});cx.drawImage(im,0,0);const D=cx.getImageData(0,0,w,h),p=D.data,n=w*h,A=new Float32Array(n),B=new Float32Array(n),E=14,R=13,k=1/(2*R+1);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;A[i]=x<E||y<E||x>=w-E||y>=h-E?0:p[i*4]/255}
+  const pass=(s,d,hz)=>{const L=hz?w:h,M=hz?h:w,st=hz?1:w,ls=hz?w:1;
+    for(let j=0;j<M;j++){const o=j*ls;let acc=0;for(let i=-R;i<=R;i++)acc+=s[o+Math.min(L-1,Math.max(0,i))*st];
+      for(let i=0;i<L;i++){d[o+i*st]=acc*k;acc+=s[o+Math.min(L-1,i+R+1)*st]-s[o+Math.max(0,i-R)*st]}}};
+  for(let r=0;r<3;r++){pass(A,B,true);pass(B,A,false)}
+  for(let i=0;i<n;i++){p[i*4+2]=p[i*4];p[i*4]=Math.round(Math.min(1,A[i])*255);p[i*4+3]=255}return D}
 const CITYL={progs:null,drawn:false,fpsEl:null,fpsT:0,
  /* the nearest city with a tile loaded: its outer box (the fade edge) and every loaded tile of it (the dots give way there) */
  fadeBox(){let best=null,bd=1e9;for(const t of CITY_TILES){if(t.st!==3)continue;const b=t.wb,d=Math.hypot(Math.max(b[0]-cam.x,0,cam.x-b[2]),Math.max(b[1]-cam.y,0,cam.y-b[3]));if(d<bd){bd=d;best=t}}
@@ -2343,8 +2371,9 @@ const CITYL={progs:null,drawn:false,fpsEl:null,fpsT:0,
  white(gl){if(!this.wt||this.wtGl!==gl){this.wtGl=gl;this.wt=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,this.wt);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([255,0,0,255]))}return this.wt},
  /* a masked city: R = how much city ground shows (soft edges), G = which file covers it */
  mask(j,cid){if(!j.mask||!j.mll)return;this.cm=this.cm||{};if(this.cm[cid])return;const a=P(j.mll[0],j.mll[3]),b=P(j.mll[2],j.mll[1]),rec=this.cm[cid]={box:[a[0],a[1],b[0],b[1]],tex:null,src:j.mask};this.maskTex(rec)},
- maskTex(rec){const im=new Image();im.onload=()=>{const gl=GL.gl;if(!gl||GL.lost)return;const tx=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tx);gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);
-   gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,im);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+ maskTex(rec){const im=new Image();im.onload=()=>{const gl=GL.gl;if(!gl||GL.lost)return;let src=im;try{src=rec.soft||(rec.soft=cityFeather(im))}catch(e){console.warn("city mask feather:",e)}
+   const tx=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tx);gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);
+   gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,src);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);rec.tex=tx;invalidate()};im.src=rec.src},
  want(m){const now=Date.now();for(const t of CITY_TILES){if(t.st>0||(t.st<0&&now<t.retry))continue;const b=t.wb;
    if(boxDist(m,b[0],b[1],0,b[2],b[3],.3)>Math.max(m.D*8,1.5))continue;
@@ -2453,15 +2482,16 @@ const CITYL={progs:null,drawn:false,fpsEl:null,fpsT:0,
     if(CITY_TILES.some(u=>u.st===2))invalidate();break}
   const Pg=this.progs;if(!Pg)return;let any=false;cityChunkWork(gl);
   const set=(P,t)=>{const u=P.u;gl.useProgram(P.p);gl.uniformMatrix4fv(u.uVP,false,VP);if(u.uZs)gl.uniform1f(u.uZs,m.zs);if(u.uMpu)gl.uniform1f(u.uMpu,M_PER_U);
-    if(u.uBox)gl.uniform4f(u.uBox,t.ob[0],t.ob[1],t.ob[2],t.ob[3]);if(u.uRise)gl.uniform1f(u.uRise,1);if(u.uA)gl.uniform1f(u.uA,1);if(u.uDm)gl.uniform1f(u.uDm,CK.dm);if(u.uFar)gl.uniform1f(u.uFar,cs01((CK.dm-3000)/20000));if(u.uHz)gl.uniform3f(u.uHz,HZ[0],HZ[1],HZ[2]);
+    if(u.uBox)gl.uniform4f(u.uBox,t.ob[0],t.ob[1],t.ob[2],t.ob[3]);if(u.uRise)gl.uniform1f(u.uRise,1);if(u.uA)gl.uniform1f(u.uA,1);if(u.uKeep)gl.uniform1f(u.uKeep,CK.bf);if(u.uDm)gl.uniform1f(u.uDm,CK.dm);if(u.uFar)gl.uniform1f(u.uFar,cs01((CK.dm-3000)/20000));if(u.uHz)gl.uniform3f(u.uHz,HZ[0],HZ[1],HZ[2]);
     if(u.uFog)gl.uniform3f(u.uFog,FG[0],FG[1],FG[2]);if(u.uDet)gl.uniform1f(u.uDet,CK.q>1?1:CK.q>0?.5:.3);if(u.uM)gl.uniform2f(u.uM,t.g.MX,t.g.MY);if(u.uPS)gl.uniform1f(u.uPS,m.F*DPR);if(u.uDpr)gl.uniform1f(u.uDpr,DPR);if(u.uRiv)gl.uniform1f(u.uRiv,t.g.riv&&SET.river!==false?1:0)};
   gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
   for(const t of CITY_TILES){if(t.st!==3)continue;const b=t.wb,g=t.g;if(!boxIn(m,b[0],b[1],-.1,b[2],b[3],(g.hmax+60)/M_PER_U+.4))continue;any=true;
     if(g.lazy)cityHiGround(gl,m,t,g);
-    if(g.tex){gl.depthMask(false);set(Pg.g,t);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,g.hi||g.tex);gl.uniform1i(Pg.g.u.uTex,0);
+    if(g.tex&&CK.cf>0){gl.depthMask(false);set(Pg.g,t);gl.uniform1f(Pg.g.u.uA,CK.cf);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,g.hi||g.tex);gl.uniform1i(Pg.g.u.uTex,0);
       {const cm=this.cm&&this.cm[t.cid],on=cm&&cm.tex?1:0;gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,on?cm.tex:this.white(gl));gl.uniform1i(Pg.g.u.uCM,1);gl.activeTexture(gl.TEXTURE0);
        gl.uniform1i(Pg.g.u.uCMode,on);if(on)gl.uniform4f(Pg.g.u.uCMB,cm.box[0],cm.box[1],cm.box[2],cm.box[3])}
       gl.bindVertexArray(g.gv);gl.drawElements(gl.TRIANGLES,g.gn,gl.UNSIGNED_SHORT,0)}
+    if(CK.bf<=0)continue;   /* far enough that every building has sunk away: nothing more to draw (or build) here */
     if(g.lazy){cityLazyDraw(gl,m,t,g,set,Pg);gl.bindVertexArray(g.lm);gl.drawArrays(gl.TRIANGLES,0,g.lmN);
       if(CK.q>0&&CK.dm<9000){set(Pg.p,t);gl.bindVertexArray(g.trees.v);gl.drawArrays(gl.POINTS,0,g.trees.n)}continue}
     if(g.lod)cityLodPick(m,g);const lv=g.lv;
@@ -2475,8 +2505,8 @@ const CITYL={progs:null,drawn:false,fpsEl:null,fpsT:0,
     if(CK.q>0&&CK.dm<9000){set(Pg.p,t);gl.bindVertexArray(g.trees.v);gl.drawArrays(gl.POINTS,0,g.trees.n)}}
   gl.depthMask(false);gl.disable(gl.DEPTH_TEST);gl.bindVertexArray(null);this.drawn=any;this.vp=VP},
  /* street lights, the Tokyo Tower lattice and aircraft lights: added light, drawn last */
- glow(gl,m){if(!this.drawn)return;const Pg=this.progs,P=Pg.p,u=P.u;gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.depthMask(false);gl.blendFunc(gl.ONE,gl.ONE);gl.useProgram(P.p);
-  gl.uniformMatrix4fv(u.uVP,false,this.vp);gl.uniform1f(u.uZs,m.zs);gl.uniform1f(u.uMpu,M_PER_U);gl.uniform1f(u.uA,1);gl.uniform1f(u.uLan,SET.lantern!==false?1:0);gl.uniform1f(u.uRiv,SET.river!==false?1:0);gl.uniform1f(u.uDm,CK.dm);gl.uniform1f(u.uPS,m.F*DPR);gl.uniform1f(u.uDpr,DPR);
+ glow(gl,m){if(!this.drawn||CK.dm>31000)return;const Pg=this.progs,P=Pg.p,u=P.u;gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.depthMask(false);gl.blendFunc(gl.ONE,gl.ONE);gl.useProgram(P.p);
+  gl.uniformMatrix4fv(u.uVP,false,this.vp);gl.uniform1f(u.uZs,m.zs);gl.uniform1f(u.uMpu,M_PER_U);gl.uniform1f(u.uA,1);gl.uniform1f(u.uLan,SET.lantern!==false?1:0);gl.uniform1f(u.uRiv,SET.river!==false?1:0);gl.uniform1f(u.uDm,CK.dm);gl.uniform1f(u.uPS,m.F*DPR);gl.uniform1f(u.uDpr,DPR);gl.uniform1f(u.uKeep,CK.bf);
   for(const t of CITY_TILES){if(t.st!==3)continue;gl.uniform4f(u.uBox,t.ob[0],t.ob[1],t.ob[2],t.ob[3]);gl.bindVertexArray(t.g.glow.v);gl.drawArrays(gl.POINTS,0,t.g.glow.n)}
   gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.disable(gl.DEPTH_TEST);gl.bindVertexArray(null)}};
 /* big-area tiles (the Kyoto area, marked lazy): the tile's landmarks, lights, trees, labels and a small ground are built
